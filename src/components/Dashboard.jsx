@@ -96,7 +96,7 @@ function Dashboard({ user, role }) {
 
       {currentTab === 'inventory' && (
         <div className="glass-card">
-          <RoomInventory />
+          <RoomInventory isAdmin={isAdmin} />
         </div>
       )}
 

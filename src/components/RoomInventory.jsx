@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, doc, writeBatch, onSnapshot } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
-function RoomInventory() {
+function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('101');
@@ -112,13 +112,14 @@ function RoomInventory() {
     <div className="space-y-6 relative">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">객실 인벤토리 현황판</h2>
-        {rooms.length === 0 && (
+        {(rooms.length === 0 || isAdmin) && (
           <button 
             onClick={initializeRooms} 
             disabled={isInitializing}
             className="btn btn-primary"
+            style={{ backgroundColor: rooms.length > 0 ? 'var(--rose-600)' : undefined }}
           >
-            {isInitializing ? '초기화 중...' : '객실 데이터 초기화 (1회 필요)'}
+            {isInitializing ? '초기화 중...' : '데이터 (강제) 재초기화'}
           </button>
         )}
       </div>
