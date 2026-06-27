@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, doc, writeBatch, onSnapshot, getDocs, query, where } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
 import { fetchTodayReservations } from '../services/vercelApi';
 import { runAutoAssignment } from '../utils/autoAssigner';
 import * as XLSX from 'xlsx';
+import CustomRulesModal from './CustomRulesModal';
 
 function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
@@ -17,6 +18,9 @@ function RoomInventory({ isAdmin }) {
   const [notesInput, setNotesInput] = useState('');
 
   const [hasAutoAssigned, setHasAutoAssigned] = useState(false);
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [activeRules, setActiveRules] = useState([]);
+  const [isSettingDB, setIsSettingDB] = useState(false);
   
   // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
   const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
@@ -31,6 +35,7 @@ function RoomInventory({ isAdmin }) {
   };
 
   useEffect(() => {
+    fetchActiveRules();
     const unsubscribe = onSnapshot(collection(db, 'rooms'), (snapshot) => {
       const roomsArray = snapshot.docs.map(doc => doc.data());
       setRooms(roomsArray);
@@ -38,6 +43,16 @@ function RoomInventory({ isAdmin }) {
     });
     return () => unsubscribe();
   }, []);
+
+  const fetchActiveRules = async () => {
+    try {
+      const q = query(collection(db, 'ai_rules'), where('isActive', '==', true));
+      const snap = await getDocs(q);
+      setActiveRules(snap.docs.map(doc => doc.data().text));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // 룸 데이터 로드 직후 (최초 1회) 자동 배정 로직 실행
   useEffect(() => {
@@ -49,9 +64,10 @@ function RoomInventory({ isAdmin }) {
 
   const handleAutoAssign = async (silent = false) => {
     setIsAssigning(true);
+    await fetchActiveRules();
     try {
       // 1. Fetch Reservations from Vercel Engine
-      const reservations = await fetchTodayReservations();
+      const reservations = await fetchTodayReservations(activeRules);
       
       // 이미 파이어베이스(rooms)에 배정된 예약자는 중복 배정하지 않도록 필터링
       const unassignedReservations = reservations.filter(res => {
@@ -205,7 +221,41 @@ function RoomInventory({ isAdmin }) {
       <div className="inventory-header animate-float-up">
         <h1 className="header-title">객실 배정 AI 현황판</h1>
         
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            className="btn" 
+            style={{ border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
+            onClick={() => setIsRulesModalOpen(true)}
+          >
+            🤖 AI 특수 규칙
+          </button>
+          
+          <button 
+            className="btn" 
+            style={{ border: '1px solid #34D399', color: '#34D399' }}
+            onClick={async () => {
+              if(!window.confirm("100명의 가상 예약 데이터를 Firebase에 생성하시겠습니까?")) return;
+              setIsSettingDB(true);
+              try {
+                const { generateMockReservations } = await import('../data/mockReservations');
+                const mocks = generateMockReservations();
+                const batch = writeBatch(db);
+                mocks.forEach(m => {
+                  batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
+                });
+                await batch.commit();
+                alert("100명 세팅 완료! 수동 재배정 실행을 눌러 AI 배정을 테스트하세요.");
+              } catch (e) {
+                console.error(e);
+                alert("세팅 실패");
+              }
+              setIsSettingDB(false);
+            }}
+            disabled={isSettingDB}
+          >
+            {isSettingDB ? '⏳ 세팅 중...' : '🧪 100명 고객 세팅'}
+          </button>
+
           {isAdmin && (
             <>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}>
@@ -363,6 +413,13 @@ function RoomInventory({ isAdmin }) {
         </div>
       )}
       
+      <CustomRulesModal 
+        isOpen={isRulesModalOpen} 
+        onClose={() => {
+          setIsRulesModalOpen(false);
+          fetchActiveRules(); // 모달 닫힐 때 규칙 갱신
+        }} 
+      />
     </div>
   );
 }
