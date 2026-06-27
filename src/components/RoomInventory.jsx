@@ -5,6 +5,7 @@ import roomsData from '../data/roomsData.json';
 
 import { fetchTodayReservations } from '../services/vercelApi';
 import { runAutoAssignment } from '../utils/autoAssigner';
+import * as XLSX from 'xlsx';
 
 function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
@@ -15,6 +16,8 @@ function RoomInventory({ isAdmin }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [notesInput, setNotesInput] = useState('');
 
+  const [hasAutoAssigned, setHasAutoAssigned] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'rooms'), (snapshot) => {
       const roomsArray = snapshot.docs.map(doc => doc.data());
@@ -24,14 +27,34 @@ function RoomInventory({ isAdmin }) {
     return () => unsubscribe();
   }, []);
 
-  const handleAutoAssign = async () => {
+  // 룸 데이터 로드 직후 (최초 1회) 자동 배정 로직 실행
+  useEffect(() => {
+    if (!loading && rooms.length > 0 && !hasAutoAssigned) {
+      setHasAutoAssigned(true);
+      handleAutoAssign(true); // silent = true (알림창 생략)
+    }
+  }, [loading, rooms, hasAutoAssigned]);
+
+  const handleAutoAssign = async (silent = false) => {
     setIsAssigning(true);
     try {
       // 1. Fetch Reservations from Vercel Engine
       const reservations = await fetchTodayReservations();
       
+      // 이미 파이어베이스(rooms)에 배정된 예약자는 중복 배정하지 않도록 필터링
+      const unassignedReservations = reservations.filter(res => {
+        const isAlreadyAssigned = rooms.some(r => r.notes && r.notes.includes(res.customerName));
+        return !isAlreadyAssigned;
+      });
+
+      if (unassignedReservations.length === 0) {
+        if (!silent) alert('모든 예약이 이미 배정되었거나, 처리할 예약이 없습니다.');
+        setIsAssigning(false);
+        return;
+      }
+      
       // 2. Run AI Auto Assignment Engine
-      const { assignments, logs } = await runAutoAssignment(reservations, rooms);
+      const { assignments, logs } = await runAutoAssignment(unassignedReservations, rooms);
       
       // 3. Update Firebase with Assigned Results
       if (assignments.length > 0) {
@@ -47,13 +70,13 @@ function RoomInventory({ isAdmin }) {
           });
         });
         await batch.commit();
-        alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
+        if (!silent) alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
       } else {
-        alert('배정할 내역이 없거나 가능한 빈 방이 없습니다.');
+        if (!silent) alert('배정할 내역이 없거나 가능한 빈 방이 없습니다.');
       }
     } catch (error) {
       console.error('Error in auto assignment:', error);
-      alert('자동 배정 중 오류가 발생했습니다: ' + error.message);
+      if (!silent) alert('자동 배정 중 오류가 발생했습니다: ' + error.message);
     } finally {
       setIsAssigning(false);
     }
@@ -109,6 +132,24 @@ function RoomInventory({ isAdmin }) {
     }
   };
 
+  const exportToExcel = () => {
+    const exportData = rooms.map(room => ({
+      '동': room.building,
+      '호수': room.roomNumber,
+      '객실 타입': room.size,
+      '베드 타입': room.bedType,
+      '상태': room.status === 'available' ? '빈 방' : room.status === 'assigned' ? '배정됨' : '차단됨',
+      '커넥팅 연결호수': room.isConnecting ? room.adjacent : '해당없음',
+      '메모(고객명)': room.notes || ''
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "객실배정현황");
+    const today = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `객실배정현황_${today}.xlsx`);
+  };
+
   const filteredRooms = rooms.filter(r => r.building === activeTab).sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
   
   // Calculate Stats
@@ -154,14 +195,23 @@ function RoomInventory({ isAdmin }) {
         
         <div style={{ display: 'flex', gap: '1rem' }}>
           {isAdmin && (
-            <button 
-              onClick={handleAutoAssign} 
-              disabled={isAssigning}
-              className="btn btn-primary"
-              style={{ backgroundColor: '#6366f1' }}
-            >
-              {isAssigning ? '🤖 AI 배정 중...' : '🤖 오늘 체크인 자동 배정 (Vercel & AI)'}
-            </button>
+            <>
+              <button 
+                onClick={() => handleAutoAssign(false)} 
+                disabled={isAssigning}
+                className="btn btn-primary"
+                style={{ backgroundColor: '#6366f1' }}
+              >
+                {isAssigning ? '🤖 AI 배정 중...' : '🤖 수동 재배정 실행'}
+              </button>
+              <button 
+                onClick={exportToExcel}
+                className="btn btn-primary"
+                style={{ backgroundColor: '#10b981' }}
+              >
+                📊 엑셀 다운로드
+              </button>
+            </>
           )}
 
           {(rooms.length === 0 || isAdmin) && (
