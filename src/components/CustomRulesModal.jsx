@@ -76,9 +76,9 @@ export default function CustomRulesModal({ isOpen, onClose }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '600px' }}>
-        <h2 className="modal-title">🤖 AI 특수 배정 규칙</h2>
+        <h2 className="modal-title">⚙️ 특별 배정 규칙</h2>
         <p className="modal-subtitle" style={{ marginBottom: '1.5rem' }}>
-          자연어로 지시사항을 입력하면 AI 엔진이 이를 해석하여 배정 로직에 강제로 반영합니다.<br/>
+          자연어로 지시사항을 입력하면 시스템이 이를 해석하여 배정 로직에 강제로 반영합니다.<br/>
           (예: "하나은행 워크샵 고객들은 모두 103동 16평으로 배정해")
         </p>
 
@@ -86,7 +86,7 @@ export default function CustomRulesModal({ isOpen, onClose }) {
           <textarea
             className="input-field"
             rows="3"
-            placeholder="AI에게 내릴 자연어 지시사항을 입력하세요..."
+            placeholder="시스템에 내릴 자연어 지시사항을 입력하세요..."
             value={newRule}
             onChange={(e) => setNewRule(e.target.value)}
             style={{ resize: 'none', marginBottom: '1rem' }}

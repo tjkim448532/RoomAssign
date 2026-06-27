@@ -226,17 +226,20 @@ function RoomInventory({ isAdmin }) {
   return (
     <div className="inventory-container relative">
       <div className="inventory-header animate-float-up">
-        <h1 className="header-title">객실 배정 AI 현황판</h1>
+        <h1 className="header-title">스마트 객실 배정 현황판</h1>
         
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button 
-            className="btn" 
-            style={{ border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
-            onClick={() => setIsRulesModalOpen(true)}
-          >
-            🤖 AI 특수 규칙
-          </button>
           
+          {(rooms.length === 0 || isAdmin) && (
+            <button 
+              onClick={initializeRooms} 
+              disabled={isInitializing}
+              className="btn btn-primary"
+            >
+              {isInitializing ? '초기화 중...' : '객실 데이터 초기화'}
+            </button>
+          )}
+
           <button 
             className="btn" 
             style={{ border: '1px solid #34D399', color: '#34D399' }}
@@ -251,7 +254,7 @@ function RoomInventory({ isAdmin }) {
                   batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
                 });
                 await batch.commit();
-                alert("100명 세팅 완료! 수동 재배정 실행을 눌러 AI 배정을 테스트하세요.");
+                alert("100명 세팅 완료! 수동 재배정 실행을 눌러 배정을 테스트하세요.");
               } catch (e) {
                 console.error(e);
                 alert("세팅 실패");
@@ -260,11 +263,27 @@ function RoomInventory({ isAdmin }) {
             }}
             disabled={isSettingDB}
           >
-            {isSettingDB ? '⏳ 세팅 중...' : '🧪 100명 고객 세팅'}
+            {isSettingDB ? '⏳ 세팅 중...' : '🧪 가상 고객 100명 세팅'}
           </button>
 
+          <button 
+            className="btn" 
+            style={{ border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
+            onClick={() => setIsRulesModalOpen(true)}
+          >
+            ⚙️ 특별 배정 규칙
+          </button>
+          
           {isAdmin && (
             <>
+              <button 
+                onClick={() => handleAutoAssign(false)} 
+                disabled={isAssigning}
+                className="btn btn-gradient"
+              >
+                {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정 실행'}
+              </button>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}>
                 <input 
                   type="checkbox" 
@@ -276,29 +295,12 @@ function RoomInventory({ isAdmin }) {
               </label>
               
               <button 
-                onClick={() => handleAutoAssign(false)} 
-                disabled={isAssigning}
-                className="btn btn-gradient"
-              >
-                {isAssigning ? '✨ AI 배정 중...' : '✨ 수동 재배정 실행'}
-              </button>
-              <button 
                 onClick={exportToExcel}
                 className="btn btn-primary"
               >
-                📊 엑셀 다운로드
+                📊 결과 엑셀 다운로드
               </button>
             </>
-          )}
-
-          {(rooms.length === 0 || isAdmin) && (
-            <button 
-              onClick={initializeRooms} 
-              disabled={isInitializing}
-              className="btn btn-primary"
-            >
-              {isInitializing ? '초기화 중...' : '데이터 (강제) 재초기화'}
-            </button>
           )}
         </div>
       </div>
