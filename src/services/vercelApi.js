@@ -2,8 +2,8 @@
  * Vercel API 통신 모듈 (MariaDB Read-Only Proxy & Gemini AI Analysis)
  */
 
-// 실제 Vercel 배포 시 해당 도메인으로 변경하세요 (예: https://belleforet-data.vercel.app/api/v3/roomassign/reservations)
-const VERCEL_API_URL = "http://localhost:3000/api/v3/roomassign/reservations";
+// Vercel 운영 서버 도메인 연결
+const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v3/roomassign/reservations";
 
 export async function fetchTodayReservations() {
   console.log("Vercel 엔진을 통해 AWS MariaDB에서 예약 데이터와 Gemini AI 선호도 분석 결과를 읽어옵니다...");
