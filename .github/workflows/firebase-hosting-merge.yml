@@ -18,3 +18,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROOMASSIGN_F04A6 }}
           channelId: live
           projectId: roomassign-f04a6
+          firebaseToolsVersion: '13.0.0'
