@@ -1,8 +1,6 @@
-import { analyzeCustomerPreferences } from '../services/aiAnalyzer';
-
 /**
  * 지능형 객실 배정 알고리즘
- * @param {Array} reservations - Vercel에서 받아온 예약 리스트
+ * @param {Array} reservations - Vercel에서 받아온 예약 리스트 (AI 선호도 분석 포함)
  * @param {Array} currentRooms - 현재 객실 인벤토리 상태
  * @returns {Object} { assignments: [], logs: [] }
  */
@@ -22,8 +20,10 @@ export async function runAutoAssignment(reservations, currentRooms) {
     logs.push(`---`);
     logs.push(`[진행중] ${res.customerName} 고객님 (${res.roomType}) 분석 시작...`);
     
-    // 1. AI 선호도 분석
-    const prefs = await analyzeCustomerPreferences(res.notes);
+    // 1. AI 선호도 분석 결과 (Vercel 엔진에서 받아온 값)
+    const prefs = res.preferences || {
+      wantsHighFloor: false, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: false, otherKeywords: []
+    };
     logs.push(`  └ AI 분석 결과: ${JSON.stringify(prefs)}`);
 
     // 2. 타입에 맞는 빈 방 필터링
