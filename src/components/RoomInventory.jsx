@@ -3,11 +3,15 @@ import { db } from '../firebase';
 import { collection, doc, writeBatch, onSnapshot } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
+import { fetchTodayReservations } from '../services/vercelApi';
+import { runAutoAssignment } from '../utils/autoAssigner';
+
 function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('101');
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [notesInput, setNotesInput] = useState('');
 
@@ -19,6 +23,41 @@ function RoomInventory({ isAdmin }) {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleAutoAssign = async () => {
+    setIsAssigning(true);
+    try {
+      // 1. Fetch Reservations from Vercel Engine
+      const reservations = await fetchTodayReservations();
+      
+      // 2. Run AI Auto Assignment Engine
+      const { assignments, logs } = await runAutoAssignment(reservations, rooms);
+      
+      // 3. Update Firebase with Assigned Results
+      if (assignments.length > 0) {
+        const batch = writeBatch(db);
+        assignments.forEach(assignment => {
+          assignment.assignedRooms.forEach(roomNumber => {
+            const building = roomNumber.substring(0, 3); // e.g. 101
+            const roomRef = doc(db, 'rooms', `${building}-${roomNumber}`);
+            batch.update(roomRef, {
+              status: 'assigned',
+              notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`
+            });
+          });
+        });
+        await batch.commit();
+        alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
+      } else {
+        alert('배정할 내역이 없거나 가능한 빈 방이 없습니다.');
+      }
+    } catch (error) {
+      console.error('Error in auto assignment:', error);
+      alert('자동 배정 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   const initializeRooms = async () => {
     if (!window.confirm('경고: 객실 데이터를 시트 데이터로 초기화하시겠습니까? 기존 배정 내역이 모두 리셋될 수 있습니다.')) return;
@@ -112,16 +151,30 @@ function RoomInventory({ isAdmin }) {
     <div className="inventory-container relative">
       <div className="inventory-header">
         <h2 className="text-2xl font-bold text-white">객실 인벤토리 현황판</h2>
-        {(rooms.length === 0 || isAdmin) && (
-          <button 
-            onClick={initializeRooms} 
-            disabled={isInitializing}
-            className="btn btn-primary"
-            style={{ backgroundColor: rooms.length > 0 ? 'var(--error-color)' : undefined }}
-          >
-            {isInitializing ? '초기화 중...' : '데이터 (강제) 재초기화'}
-          </button>
-        )}
+        
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          {isAdmin && (
+            <button 
+              onClick={handleAutoAssign} 
+              disabled={isAssigning}
+              className="btn btn-primary"
+              style={{ backgroundColor: '#6366f1' }}
+            >
+              {isAssigning ? '🤖 AI 배정 중...' : '🤖 오늘 체크인 자동 배정 (Vercel & AI)'}
+            </button>
+          )}
+
+          {(rooms.length === 0 || isAdmin) && (
+            <button 
+              onClick={initializeRooms} 
+              disabled={isInitializing}
+              className="btn btn-primary"
+              style={{ backgroundColor: rooms.length > 0 ? 'var(--error-color)' : undefined }}
+            >
+              {isInitializing ? '초기화 중...' : '데이터 (강제) 재초기화'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats Board */}
