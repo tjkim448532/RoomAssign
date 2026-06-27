@@ -75,7 +75,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
       assignments.push({
         reservationId: res.reservationId,
         customerName: res.customerName,
-        assignedRooms: [selectedRoom.roomNumber, adjacentRoom.roomNumber],
+        assignedRooms: [selectedRoom.id, adjacentRoom.id],
         type: '51P'
       });
       logs.push(`  ✅ [배정 성공] 51평형(락오프): ${selectedRoom.roomNumber}호 + ${adjacentRoom.roomNumber}호 통합 배정 완료`);
@@ -87,7 +87,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
       assignments.push({
         reservationId: res.reservationId,
         customerName: res.customerName,
-        assignedRooms: [selectedRoom.roomNumber],
+        assignedRooms: [selectedRoom.id],
         type: effectiveRoomType
       });
       logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료`);

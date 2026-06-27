@@ -88,14 +88,21 @@ function RoomInventory({ isAdmin }) {
       if (assignments.length > 0) {
         const batch = writeBatch(db);
         assignments.forEach(assignment => {
-          assignment.assignedRooms.forEach(roomNumber => {
-            const building = roomNumber.substring(0, 3); // e.g. 101
-            const roomRef = doc(db, 'rooms', `${building}-${roomNumber}`);
+          // 객실 업데이트
+          assignment.assignedRooms.forEach(roomId => {
+            const roomRef = doc(db, 'rooms', roomId);
             batch.update(roomRef, {
               status: 'assigned',
               notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`
             });
           });
+          // 가상 예약 데이터 업데이트
+          if (assignment.reservationId && assignment.reservationId.startsWith('RES-MOCK')) {
+            const resRef = doc(db, 'reservations', assignment.reservationId);
+            batch.update(resRef, {
+              assignedRoom: assignment.assignedRooms.join(', ')
+            });
+          }
         });
         await batch.commit();
         if (!silent) alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
