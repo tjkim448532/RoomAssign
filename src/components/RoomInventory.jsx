@@ -17,6 +17,18 @@ function RoomInventory({ isAdmin }) {
   const [notesInput, setNotesInput] = useState('');
 
   const [hasAutoAssigned, setHasAutoAssigned] = useState(false);
+  
+  // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
+  const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
+    const saved = localStorage.getItem('isAutoAssignEnabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const toggleAutoAssign = () => {
+    const newState = !isAutoAssignEnabled;
+    setIsAutoAssignEnabled(newState);
+    localStorage.setItem('isAutoAssignEnabled', JSON.stringify(newState));
+  };
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'rooms'), (snapshot) => {
@@ -29,11 +41,11 @@ function RoomInventory({ isAdmin }) {
 
   // 룸 데이터 로드 직후 (최초 1회) 자동 배정 로직 실행
   useEffect(() => {
-    if (!loading && rooms.length > 0 && !hasAutoAssigned) {
+    if (isAutoAssignEnabled && !loading && rooms.length > 0 && !hasAutoAssigned) {
       setHasAutoAssigned(true);
       handleAutoAssign(true); // silent = true (알림창 생략)
     }
-  }, [loading, rooms, hasAutoAssigned]);
+  }, [loading, rooms, hasAutoAssigned, isAutoAssignEnabled]);
 
   const handleAutoAssign = async (silent = false) => {
     setIsAssigning(true);
@@ -193,9 +205,19 @@ function RoomInventory({ isAdmin }) {
       <div className="inventory-header">
         <h2 className="text-2xl font-bold text-white">객실 인벤토리 현황판</h2>
         
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {isAdmin && (
             <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isAutoAssignEnabled} 
+                  onChange={toggleAutoAssign} 
+                  style={{ width: '20px', height: '20px', accentColor: '#6366f1' }}
+                />
+                자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
+              </label>
+              
               <button 
                 onClick={() => handleAutoAssign(false)} 
                 disabled={isAssigning}
