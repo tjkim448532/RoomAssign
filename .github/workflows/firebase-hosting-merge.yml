@@ -12,10 +12,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rm -rf dist && npm install && npm run build
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROOMASSIGN_F04A6 }}
-          channelId: live
-          projectId: roomassign-f04a6
-          firebaseToolsVersion: '13.0.0'
+      - name: Deploy to Firebase Hosting (Custom Robust)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROOMASSIGN_F04A6 }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > firebase_sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS="${PWD}/firebase_sa.json"
+          
+          # 배포를 실행하고 결과를 JSON으로 받되, 에러가 나도 스크립트가 멈추지 않도록 합니다.
+          OUTPUT=$(npx firebase-tools@latest deploy --only hosting --project roomassign-f04a6 --json 2>&1 || true)
+          echo "$OUTPUT"
+          
+          # 에러 내용 중에 "is the current active version" 이 포함되어 있다면 (Retry 버그) 성공으로 간주
+          if echo "$OUTPUT" | grep -q '"status": "success"'; then
+            echo "✅ Deployment successful."
+            exit 0
+          elif echo "$OUTPUT" | grep -q "is the current active version"; then
+            echo "✅ Deployment succeeded (Ignored Firebase API retry bug)."
+            exit 0
+          else
+            echo "❌ Deployment failed."
+            exit 1
+          fi
