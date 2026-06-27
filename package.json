@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "csv-parse": "^7.0.0",
     "firebase": "^12.15.0",
+    "firebase-admin": "^14.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.0"
