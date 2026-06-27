@@ -202,8 +202,8 @@ function RoomInventory({ isAdmin }) {
 
   return (
     <div className="inventory-container relative">
-      <div className="inventory-header">
-        <h2 className="text-2xl font-bold text-white">객실 인벤토리 현황판</h2>
+      <div className="inventory-header animate-float-up">
+        <h1 className="header-title">객실 배정 AI 현황판</h1>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {isAdmin && (
@@ -221,15 +221,13 @@ function RoomInventory({ isAdmin }) {
               <button 
                 onClick={() => handleAutoAssign(false)} 
                 disabled={isAssigning}
-                className="btn btn-primary"
-                style={{ backgroundColor: '#6366f1' }}
+                className="btn btn-gradient"
               >
-                {isAssigning ? '🤖 AI 배정 중...' : '🤖 수동 재배정 실행'}
+                {isAssigning ? '✨ AI 배정 중...' : '✨ 수동 재배정 실행'}
               </button>
               <button 
                 onClick={exportToExcel}
                 className="btn btn-primary"
-                style={{ backgroundColor: '#10b981' }}
               >
                 📊 엑셀 다운로드
               </button>
@@ -241,7 +239,6 @@ function RoomInventory({ isAdmin }) {
               onClick={initializeRooms} 
               disabled={isInitializing}
               className="btn btn-primary"
-              style={{ backgroundColor: rooms.length > 0 ? 'var(--error-color)' : undefined }}
             >
               {isInitializing ? '초기화 중...' : '데이터 (강제) 재초기화'}
             </button>
