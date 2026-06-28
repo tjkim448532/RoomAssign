@@ -44,13 +44,72 @@ export const generateMockReservations = () => {
       note = ""; // 특별한 메모 없음
     }
 
+    // MariaDB 확장 필드 가상 생성
+    const stayLength = Math.floor(Math.random() * 3) + 1; // 1박 ~ 3박
+    const adults = Math.floor(Math.random() * 4) + 1;
+    const children = Math.floor(Math.random() * 3);
+    
+    // 날짜 계산 (오늘 기준)
+    const today = new Date();
+    const checkInDate = today.toISOString().split('T')[0];
+    const checkOutDate = new Date(today.getTime() + stayLength * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     mocks.push({
       reservationId: `RES-MOCK-${1000 + i}`,
       customerName: `${fn}${ln}`,
       roomType: forcedType,
       notes: note,
-      assignedRoom: null
+      assignedRoom: null,
+      // MariaDB fields
+      checkInDate,
+      checkOutDate,
+      stayLength,
+      adults,
+      children,
+      status: 'confirmed'
     });
   }
   return mocks;
+};
+
+// 가상 객실 상태 생성기 (실제 마리아DB 동기화 시뮬레이션)
+export const generateMockRoomsState = (rooms) => {
+  return rooms.map(room => {
+    // 이미 수동으로 배정된 방이나 차단된 방은 그대로 둠
+    if (room.status === 'assigned' || room.status === 'blocked') return room;
+
+    const rand = Math.random();
+    
+    // 30% 확률로 연박중 (Occupied)
+    if (rand < 0.30) {
+      return { 
+        ...room, 
+        status: 'occupied', 
+        notes: '[연박중] 배정불가' 
+      };
+    } 
+    // 20% 확률로 당일퇴실 (Checkout/Cleaning)
+    else if (rand >= 0.30 && rand < 0.50) {
+      return { 
+        ...room, 
+        status: 'checkout', 
+        notes: '[당일퇴실] 청소후 배정가능' 
+      };
+    } 
+    // 5% 확률로 고장/점검 (OOO)
+    else if (rand >= 0.50 && rand < 0.55) {
+      return { 
+        ...room, 
+        status: 'ooo', 
+        notes: '[점검중] 누수 공사' 
+      };
+    }
+    
+    // 나머지 45%는 완전 빈 방 (Available)
+    return {
+      ...room,
+      status: 'available',
+      notes: ''
+    };
+  });
 };

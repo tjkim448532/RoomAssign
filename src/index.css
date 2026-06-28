@@ -370,6 +370,23 @@ h1, h2, h3, .heading-text {
   opacity: 0.7;
 }
 
+.room-card.occupied {
+  background: linear-gradient(180deg, rgba(20,20,22,0.6) 0%, rgba(100, 116, 139, 0.1) 100%);
+  border-color: rgba(100, 116, 139, 0.3);
+  opacity: 0.6;
+}
+
+.room-card.checkout {
+  background: linear-gradient(180deg, rgba(20,20,22,0.4) 0%, rgba(249, 115, 22, 0.1) 100%);
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.room-card.ooo {
+  background: linear-gradient(180deg, rgba(20,20,22,0.6) 0%, rgba(220, 38, 38, 0.15) 100%);
+  border-color: rgba(220, 38, 38, 0.4);
+  opacity: 0.5;
+}
+
 .room-number {
   font-size: 2rem;
   font-family: 'Outfit', sans-serif;
@@ -412,6 +429,24 @@ h1, h2, h3, .heading-text {
   color: #FCA5A5;
   background: rgba(248, 113, 113, 0.1);
   border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.room-card.occupied .room-status-badge {
+  color: #94A3B8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.room-card.checkout .room-status-badge {
+  color: #FB923C;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.2);
+}
+
+.room-card.ooo .room-status-badge {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .connecting-info {

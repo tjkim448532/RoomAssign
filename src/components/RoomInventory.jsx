@@ -259,14 +259,24 @@ function RoomInventory({ isAdmin }) {
                 if(!window.confirm("100명의 테스트용 가상 고객 리스트를 세팅하시겠습니까?")) return;
                 setIsSettingDB(true);
                 try {
-                  const { generateMockReservations } = await import('../data/mockReservations');
+                  const { generateMockReservations, generateMockRoomsState } = await import('../data/mockReservations');
                   const mocks = generateMockReservations();
+                  const mockRooms = generateMockRoomsState(rooms);
+                  
                   const batch = writeBatch(db);
+                  
+                  // 1. 가상 예약 세팅
                   mocks.forEach(m => {
                     batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
                   });
+                  
+                  // 2. 가상 객실 상태(연박, 퇴실, 점검 등) 세팅
+                  mockRooms.forEach(r => {
+                    batch.update(doc(db, 'rooms', r.id), { status: r.status, notes: r.notes });
+                  });
+
                   await batch.commit();
-                  alert("100명 세팅 완료! 수동 재배정 실행을 눌러 배정을 테스트하세요.");
+                  alert("가상 데이터 세팅 완료! 객실 상태(연박/퇴실/점검)와 예약을 확인하세요.");
                 } catch (e) {
                   console.error(e);
                   alert("세팅 실패");
@@ -389,7 +399,10 @@ function RoomInventory({ isAdmin }) {
             
             <div className="room-status-badge">
               {room.status === 'available' ? '빈 방' :
-               room.status === 'assigned' ? '배정됨' : '차단됨'}
+               room.status === 'assigned' ? '배정됨' : 
+               room.status === 'occupied' ? '연박중' :
+               room.status === 'checkout' ? '당일퇴실' :
+               room.status === 'ooo' ? '점검중' : '차단됨'}
             </div>
             
             {room.isConnecting && (

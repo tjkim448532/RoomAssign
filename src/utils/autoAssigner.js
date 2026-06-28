@@ -7,7 +7,7 @@
 export async function runAutoAssignment(reservations, currentRooms) {
   const assignments = [];
   const logs = [];
-  const availableRooms = JSON.parse(JSON.stringify(currentRooms)).filter(r => r.status === 'available');
+  const availableRooms = JSON.parse(JSON.stringify(currentRooms)).filter(r => r.status === 'available' || r.status === 'checkout');
 
   logs.push(`자동 배정 엔진 시작: 총 ${reservations.length}건의 예약을 처리합니다.`);
 
