@@ -228,78 +228,113 @@ function RoomInventory({ isAdmin }) {
       <div className="inventory-header animate-float-up">
         <h1 className="header-title">스마트 객실 배정 현황판</h1>
         
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          
+        {/* Flowchart Layout */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '1.5rem 0', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ color: 'var(--text-main)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '600' }}>📌 배정 진행 순서</h3>
+
           {(rooms.length === 0 || isAdmin) && (
-            <button 
-              onClick={initializeRooms} 
-              disabled={isInitializing}
-              className="btn btn-primary"
-            >
-              {isInitializing ? '초기화 중...' : '객실 데이터 초기화'}
-            </button>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>1</div>
+                <button 
+                  onClick={initializeRooms} 
+                  disabled={isInitializing}
+                  className="btn btn-primary"
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  {isInitializing ? '초기화 중...' : '객실 데이터 초기화'}
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>기존 배정 내역을 모두 리셋하고 빈 객실 상태로 되돌립니다.</span>
+              </div>
+              <div style={{ paddingLeft: '15px', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+            </>
           )}
 
-          <button 
-            className="btn" 
-            style={{ border: '1px solid #34D399', color: '#34D399' }}
-            onClick={async () => {
-              if(!window.confirm("100명의 가상 예약 데이터를 Firebase에 생성하시겠습니까?")) return;
-              setIsSettingDB(true);
-              try {
-                const { generateMockReservations } = await import('../data/mockReservations');
-                const mocks = generateMockReservations();
-                const batch = writeBatch(db);
-                mocks.forEach(m => {
-                  batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
-                });
-                await batch.commit();
-                alert("100명 세팅 완료! 수동 재배정 실행을 눌러 배정을 테스트하세요.");
-              } catch (e) {
-                console.error(e);
-                alert("세팅 실패");
-              }
-              setIsSettingDB(false);
-            }}
-            disabled={isSettingDB}
-          >
-            {isSettingDB ? '⏳ 세팅 중...' : '🧪 가상 고객 100명 세팅'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '2' : '1'}</div>
+            <button 
+              className="btn" 
+              style={{ width: '220px', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
+              onClick={async () => {
+                if(!window.confirm("100명의 가상 예약 데이터를 Firebase에 생성하시겠습니까?")) return;
+                setIsSettingDB(true);
+                try {
+                  const { generateMockReservations } = await import('../data/mockReservations');
+                  const mocks = generateMockReservations();
+                  const batch = writeBatch(db);
+                  mocks.forEach(m => {
+                    batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
+                  });
+                  await batch.commit();
+                  alert("100명 세팅 완료! 수동 재배정 실행을 눌러 배정을 테스트하세요.");
+                } catch (e) {
+                  console.error(e);
+                  alert("세팅 실패");
+                }
+                setIsSettingDB(false);
+              }}
+              disabled={isSettingDB}
+            >
+              {isSettingDB ? '⏳ 세팅 중...' : '🧪 가상 고객 100명 세팅'}
+            </button>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>테스트를 위한 다양한 시나리오의 가상 예약을 DB에 생성합니다.</span>
+          </div>
 
-          <button 
-            className="btn" 
-            style={{ border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
-            onClick={() => setIsRulesModalOpen(true)}
-          >
-            ⚙️ 특별 배정 규칙
-          </button>
-          
+          <div style={{ paddingLeft: '15px', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '3' : '2'}</div>
+            <button 
+              className="btn" 
+              style={{ width: '220px', justifyContent: 'center', border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
+              onClick={() => setIsRulesModalOpen(true)}
+            >
+              ⚙️ 특별 배정 규칙
+            </button>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>"어린이는 1층"과 같이 스마트 배정 시스템에 강제 적용할 규칙을 설정합니다.</span>
+          </div>
+
           {isAdmin && (
             <>
-              <button 
-                onClick={() => handleAutoAssign(false)} 
-                disabled={isAssigning}
-                className="btn btn-gradient"
-              >
-                {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정 실행'}
-              </button>
+              <div style={{ paddingLeft: '15px', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}>
-                <input 
-                  type="checkbox" 
-                  checked={isAutoAssignEnabled} 
-                  onChange={toggleAutoAssign} 
-                  style={{ width: '20px', height: '20px', accentColor: '#6366f1' }}
-                />
-                자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
-              </label>
-              
-              <button 
-                onClick={exportToExcel}
-                className="btn btn-primary"
-              >
-                📊 결과 엑셀 다운로드
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>4</div>
+                <button 
+                  onClick={() => handleAutoAssign(false)} 
+                  disabled={isAssigning}
+                  className="btn btn-gradient"
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정 실행'}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>고객 메모와 특별 규칙을 분석하여 최적의 객실을 배정합니다.</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold', marginLeft: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isAutoAssignEnabled} 
+                      onChange={toggleAutoAssign} 
+                      style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                    />
+                    자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ paddingLeft: '15px', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>5</div>
+                <button 
+                  onClick={exportToExcel}
+                  className="btn btn-primary"
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  📊 결과 엑셀 다운로드
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>최종 확정된 객실 배정 결과를 엑셀 파일로 출력합니다.</span>
+              </div>
             </>
           )}
         </div>
