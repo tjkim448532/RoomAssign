@@ -66,7 +66,7 @@ function Dashboard({ user, role }) {
   return (
     <div className="container animate-fade-in">
       <header className="header">
-        <h1>벨포레 리조트 관리 시스템</h1>
+        <h1 style={{ fontWeight: '700', letterSpacing: '-0.5px' }}>자동 객실 배정 시스템</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span className={`badge ${isAdmin ? 'badge-admin' : 'badge-user'}`}>
             {isAdmin ? 'Admin' : 'User'}
