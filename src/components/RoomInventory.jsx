@@ -256,7 +256,7 @@ function RoomInventory({ isAdmin }) {
               className="btn" 
               style={{ width: '220px', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
               onClick={async () => {
-                if(!window.confirm("100명의 가상 예약 데이터를 Firebase에 생성하시겠습니까?")) return;
+                if(!window.confirm("100명의 테스트용 가상 고객 리스트를 세팅하시겠습니까?")) return;
                 setIsSettingDB(true);
                 try {
                   const { generateMockReservations } = await import('../data/mockReservations');
