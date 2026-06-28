@@ -246,7 +246,7 @@ function RoomInventory({ isAdmin }) {
                 </button>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>기존 배정 내역을 모두 리셋하고 빈 객실 상태로 되돌립니다.</span>
               </div>
-              <div style={{ width: '32px', textAlign: 'center', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
             </>
           )}
 
@@ -290,7 +290,7 @@ function RoomInventory({ isAdmin }) {
             <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>테스트를 위한 다양한 시나리오의 가상 예약을 DB에 생성합니다.</span>
           </div>
 
-          <div style={{ width: '32px', textAlign: 'center', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+          <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '3' : '2'}</div>
@@ -306,7 +306,7 @@ function RoomInventory({ isAdmin }) {
 
           {isAdmin && (
             <>
-              <div style={{ width: '32px', textAlign: 'center', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>4</div>
@@ -332,7 +332,7 @@ function RoomInventory({ isAdmin }) {
                 </div>
               </div>
 
-              <div style={{ width: '32px', textAlign: 'center', color: 'var(--border-color)', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>5</div>
