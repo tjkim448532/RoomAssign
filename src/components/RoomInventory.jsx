@@ -256,38 +256,50 @@ function RoomInventory({ isAdmin }) {
               className="btn" 
               style={{ width: '220px', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
               onClick={async () => {
-                if(!window.confirm("100명의 테스트용 가상 고객 리스트를 세팅하시겠습니까?")) return;
+                if(!window.confirm("MariaDB 요약 테이블에서 최신 데이터를 가져와 현황판을 동기화하시겠습니까?")) return;
                 setIsSettingDB(true);
                 try {
-                  const { generateMockReservations, generateMockRoomsState } = await import('../data/mockReservations');
-                  const mocks = generateMockReservations();
-                  const mockRooms = generateMockRoomsState(rooms);
+                  const res = await fetch('/api/mariadb/getSummary');
+                  const json = await res.json();
+                  
+                  let reservationsData = [];
+                  let roomsData = [];
+
+                  if (res.ok && json.success) {
+                    reservationsData = json.data.reservations;
+                    roomsData = json.data.rooms;
+                  } else {
+                    alert(`MariaDB 연동 실패: ${json.message || 'API 오류'}\n로컬 가상 데이터를 대신 생성합니다.`);
+                    const { generateMockReservations, generateMockRoomsState } = await import('../data/mockReservations');
+                    reservationsData = generateMockReservations();
+                    roomsData = generateMockRoomsState(rooms);
+                  }
                   
                   const batch = writeBatch(db);
                   
-                  // 1. 가상 예약 세팅
-                  mocks.forEach(m => {
+                  // 1. 예약 세팅 (Upsert)
+                  reservationsData.forEach(m => {
                     batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
                   });
                   
-                  // 2. 가상 객실 상태(연박, 퇴실, 점검 등) 세팅
-                  mockRooms.forEach(r => {
+                  // 2. 객실 상태 세팅 (Update)
+                  roomsData.forEach(r => {
                     batch.update(doc(db, 'rooms', r.id), { status: r.status, notes: r.notes });
                   });
 
                   await batch.commit();
-                  alert("가상 데이터 세팅 완료! 객실 상태(연박/퇴실/점검)와 예약을 확인하세요.");
+                  alert("데이터 동기화 완료! 스마트 배정을 실행해 보세요.");
                 } catch (e) {
                   console.error(e);
-                  alert("세팅 실패");
+                  alert("동기화 중 오류가 발생했습니다.");
                 }
                 setIsSettingDB(false);
               }}
               disabled={isSettingDB}
             >
-              {isSettingDB ? '⏳ 세팅 중...' : '🧪 가상 고객 100명 세팅'}
+              {isSettingDB ? '⏳ 동기화 중...' : '🔄 마리아DB 최신 데이터 동기화'}
             </button>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>테스트를 위한 다양한 시나리오의 가상 예약을 DB에 생성합니다.</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>MariaDB 요약 테이블을 읽어와 파이어베이스 현황판에 실시간 반영합니다.</span>
           </div>
 
           <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
