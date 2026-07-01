@@ -259,7 +259,7 @@ function RoomInventory({ isAdmin }) {
                 if(!window.confirm("MariaDB 요약 테이블에서 최신 데이터를 가져와 현황판을 동기화하시겠습니까?")) return;
                 setIsSettingDB(true);
                 try {
-                  const res = await fetch('/api/mariadb/getSummary');
+                  const res = await fetch('/api/mariadb/fetchSummary?t=' + Date.now());
                   
                   const contentType = res.headers.get('content-type');
                   if (!contentType || !contentType.includes('application/json')) {
