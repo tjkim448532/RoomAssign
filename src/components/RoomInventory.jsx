@@ -260,6 +260,12 @@ function RoomInventory({ isAdmin }) {
                 setIsSettingDB(true);
                 try {
                   const res = await fetch('/api/mariadb/getSummary');
+                  
+                  const contentType = res.headers.get('content-type');
+                  if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`API 응답이 올바르지 않습니다. Vercel 서버리스 환경인지 확인해주세요.`);
+                  }
+                  
                   const json = await res.json();
                   
                   let reservationsData = [];
