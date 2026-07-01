@@ -10,8 +10,15 @@ export async function runAutoAssignment(reservations, currentRooms) {
   const availableRooms = JSON.parse(JSON.stringify(currentRooms)).filter(r => r.status === 'available' || r.status === 'checkout');
 
   logs.push(`자동 배정 엔진 시작: 총 ${reservations.length}건의 예약을 처리합니다.`);
+  
+  // 0. 로컬 우선순위 정렬: 회원(is_member) > 골프예약(has_golf) 순으로 먼저 배정 기회 부여
+  const sortedReservations = [...reservations].sort((a, b) => {
+    const aScore = (a.is_member ? 2 : 0) + (a.has_golf ? 1 : 0);
+    const bScore = (b.is_member ? 2 : 0) + (b.has_golf ? 1 : 0);
+    return bScore - aScore; // 내림차순 (점수가 높은 사람이 먼저 배정)
+  });
 
-  for (const res of reservations) {
+  for (const res of sortedReservations) {
     if (res.assignedRoom) {
       logs.push(`[건너뜀] ${res.customerName} 고객님은 이미 배정되었습니다 (${res.assignedRoom}).`);
       continue;

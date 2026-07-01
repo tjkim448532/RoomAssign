@@ -484,8 +484,7 @@ function RoomInventory({ isAdmin }) {
               📋 마리아DB 데이터 동기화 미리보기
             </h3>
             <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
-              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다.<br/>
-              <span style={{ color: '#F59E0B' }}>※ 주의: 회원/비회원 구분 및 골프 예약 정보는 현재 백엔드 API에서 제공되지 않아 임시 기호로 표시됩니다. 백엔드 팀에 추가 요청이 필요합니다.</span>
+              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다.
             </p>
             
             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
@@ -508,9 +507,16 @@ function RoomInventory({ isAdmin }) {
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}>
-                        {/* 더미 플래그 표시 (백엔드 연동 전) */}
-                        <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
-                        <span style={{ display: 'inline-block', color: '#9CA3AF' }}>⛳ 정보없음</span>
+                        {Boolean(res.is_member) || res.is_member === 1 ? (
+                          <span style={{ display: 'inline-block', marginRight: '6px', color: '#FCD34D', fontWeight: 'bold' }}>👑 회원</span>
+                        ) : (
+                          <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
+                        )}
+                        {Boolean(res.has_golf) || res.has_golf === 1 ? (
+                          <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold' }}>⛳ 골프예약</span>
+                        ) : (
+                          <span style={{ display: 'inline-block', color: '#9CA3AF' }}>-</span>
+                        )}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>{res.notes || '-'}</td>
                     </tr>
