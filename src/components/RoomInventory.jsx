@@ -21,6 +21,7 @@ function RoomInventory({ isAdmin }) {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [activeRules, setActiveRules] = useState([]);
   const [isSettingDB, setIsSettingDB] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
   
   // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
   const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
@@ -280,23 +281,11 @@ function RoomInventory({ isAdmin }) {
                     throw new Error(`MariaDB 연동 실패: ${json.message || 'API 오류'}`);
                   }
                   
-                  const batch = writeBatch(db);
-                  
-                  // 1. 예약 세팅 (Upsert)
-                  reservationsData.forEach(m => {
-                    batch.set(doc(collection(db, 'reservations'), m.reservationId), m);
-                  });
-                  
-                  // 2. 객실 상태 세팅 (Update)
-                  roomsData.forEach(r => {
-                    batch.update(doc(db, 'rooms', r.id), { status: r.status, notes: r.notes });
-                  });
-
-                  await batch.commit();
-                  alert("데이터 동기화 완료! 스마트 배정을 실행해 보세요.");
+                  // 바로 DB에 밀어넣지 않고, 사용자가 확인할 수 있도록 미리보기 상태에 저장합니다.
+                  setPreviewData({ reservations: reservationsData, rooms: roomsData });
                 } catch (e) {
                   console.error(e);
-                  alert("동기화 중 오류가 발생했습니다.");
+                  alert("동기화 중 오류가 발생했습니다: " + e.message);
                 }
                 setIsSettingDB(false);
               }}
@@ -483,6 +472,90 @@ function RoomInventory({ isAdmin }) {
             <button onClick={() => setSelectedRoom(null)} className="modal-btn close">
               닫기
             </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Sync Preview Modal */}
+      {previewData && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <h3 className="modal-title" style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>
+              📋 마리아DB 데이터 동기화 미리보기
+            </h3>
+            <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다.<br/>
+              <span style={{ color: '#F59E0B' }}>※ 주의: 회원/비회원 구분 및 골프 예약 정보는 현재 백엔드 API에서 제공되지 않아 임시 기호로 표시됩니다. 백엔드 팀에 추가 요청이 필요합니다.</span>
+            </p>
+            
+            <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', color: 'var(--text-main)' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.5rem' }}>예약자명</th>
+                    <th style={{ padding: '0.5rem' }}>선택 평형</th>
+                    <th style={{ padding: '0.5rem' }}>예약/회원 정보</th>
+                    <th style={{ padding: '0.5rem' }}>요청 메모</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.reservations.map(res => (
+                    <tr key={res.reservationId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>{res.customerName}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <span style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                          {res.roomType}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}>
+                        {/* 더미 플래그 표시 (백엔드 연동 전) */}
+                        <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
+                        <span style={{ display: 'inline-block', color: '#9CA3AF' }}>⛳ 정보없음</span>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>{res.notes || '-'}</td>
+                    </tr>
+                  ))}
+                  {previewData.reservations.length === 0 && (
+                    <tr>
+                      <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: '#9CA3AF' }}>예약 데이터가 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button 
+                onClick={async () => {
+                  try {
+                    const batch = writeBatch(db);
+                    
+                    // 1. 예약 세팅 (Upsert)
+                    previewData.reservations.forEach(m => {
+                      batch.set(doc(collection(db, 'reservations'), String(m.reservationId)), m);
+                    });
+                    
+                    // 2. 객실 상태 세팅 (Update)
+                    previewData.rooms.forEach(r => {
+                      batch.update(doc(db, 'rooms', String(r.id)), { status: r.status, notes: r.notes });
+                    });
+  
+                    await batch.commit();
+                    setPreviewData(null);
+                    alert("데이터 동기화 완료! 스마트 배정을 실행해 보세요.");
+                  } catch (err) {
+                    console.error(err);
+                    alert("최종 동기화 중 오류가 발생했습니다.");
+                  }
+                }} 
+                className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
+              >
+                ✅ 이 데이터로 현황판 동기화 확정
+              </button>
+              <button onClick={() => setPreviewData(null)} className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+                ❌ 취소
+              </button>
+            </div>
           </div>
         </div>
       )}
