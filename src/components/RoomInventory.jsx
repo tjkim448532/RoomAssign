@@ -269,10 +269,7 @@ function RoomInventory({ isAdmin }) {
                     reservationsData = json.data.reservations;
                     roomsData = json.data.rooms;
                   } else {
-                    alert(`MariaDB 연동 실패: ${json.message || 'API 오류'}\n로컬 가상 데이터를 대신 생성합니다.`);
-                    const { generateMockReservations, generateMockRoomsState } = await import('../data/mockReservations');
-                    reservationsData = generateMockReservations();
-                    roomsData = generateMockRoomsState(rooms);
+                    throw new Error(`MariaDB 연동 실패: ${json.message || 'API 오류'}`);
                   }
                   
                   const batch = writeBatch(db);
