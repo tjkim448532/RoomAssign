@@ -259,13 +259,13 @@ function RoomInventory({ isAdmin }) {
                 if(!window.confirm("MariaDB 요약 테이블에서 최신 데이터를 가져와 현황판을 동기화하시겠습니까?")) return;
                 setIsSettingDB(true);
                 try {
-                  const res = await fetch('/api/mariadb/fetchSummary?t=' + Date.now());
+                  const res = await fetch('https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary');
                   
                   const contentType = res.headers.get('content-type');
                   if (!contentType || !contentType.includes('application/json')) {
                     const text = await res.text();
-                    console.error("Vercel API 비정상 응답 (HTML 등):", text);
-                    throw new Error(`API 응답이 올바르지 않습니다. Vercel 서버리스 환경인지 확인해주세요. (응답: ${text.substring(0, 100)}...)`);
+                    console.error("Backend API 비정상 응답 (HTML 등):", text);
+                    throw new Error(`API 응답이 올바르지 않습니다. 백엔드 서버 상태를 확인해주세요. (응답: ${text.substring(0, 100)}...)`);
                   }
                   
                   const json = await res.json();
