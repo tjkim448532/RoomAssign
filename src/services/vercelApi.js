@@ -31,42 +31,21 @@ export async function fetchTodayReservations(activeRules = []) {
       })
     });
 
-    if (!response.ok) throw new Error("Vercel API 통신 오류");
+    const contentType = response.headers.get('content-type');
+    if (!response.ok || !contentType || !contentType.includes('application/json')) {
+      throw new Error("Vercel AI API 통신 오류 또는 잘못된 응답 형식입니다.");
+    }
+    
     const json = await response.json();
     
     if (json.success && json.data) {
       return json.data;
+    } else {
+      throw new Error(json.message || "AI 엔진 응답 처리 실패");
     }
   } catch (error) {
-    console.warn("Vercel API 연동 실패, 로컬 Mock 데이터를 대신 반환합니다.", error);
+    console.error("Vercel AI API 연동 실패:", error);
+    // API 연결 실패 시, 가짜 데이터를 리턴하는 대신 에러를 발생시킵니다. (마리아DB 실제 데이터만 사용)
+    throw new Error("AI 배정 엔진에 연결할 수 없습니다. " + error.message);
   }
-
-  // Vercel 엔진 미구동 시 개발용 Mock 데이터 (API 응답 규격과 동일)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          reservationId: "RES-1001",
-          customerName: "김철수",
-          roomType: "35P",
-          notes: "조용한 고층 방으로 부탁드립니다. 뷰가 좋으면 좋겠어요.",
-          preferences: { wantsHighFloor: true, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: false, otherKeywords: ["조용한", "뷰"] }
-        },
-        {
-          reservationId: "RES-1002",
-          customerName: "이영희",
-          roomType: "16P",
-          notes: "휠체어 사용자가 있습니다. 무조건 1층이나 엘리베이터 바로 앞 방으로 주세요.",
-          preferences: { wantsHighFloor: false, wantsLowFloor: true, needsAccessible: true, isConnectingRequired: false, otherKeywords: ["엘리베이터 앞"] }
-        },
-        {
-          reservationId: "RES-1003",
-          customerName: "박가족",
-          roomType: "51P",
-          notes: "대가족 이동입니다. 두 방이 무조건 붙어있는 51평형 락오프 객실 필수입니다.",
-          preferences: { wantsHighFloor: false, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: true, otherKeywords: ["대가족"] }
-        }
-      ]);
-    }, 1000);
-  });
 }

@@ -96,9 +96,9 @@ function RoomInventory({ isAdmin }) {
               notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`
             });
           });
-          // 가상 예약 데이터 업데이트
-          if (assignment.reservationId && assignment.reservationId.startsWith('RES-MOCK')) {
-            const resRef = doc(db, 'reservations', assignment.reservationId);
+          // 예약 원장에 배정된 객실 번호 업데이트
+          if (assignment.reservationId) {
+            const resRef = doc(db, 'reservations', String(assignment.reservationId));
             batch.update(resRef, {
               assignedRoom: assignment.assignedRooms.join(', ')
             });
