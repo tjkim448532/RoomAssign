@@ -22,6 +22,7 @@ function RoomInventory({ isAdmin }) {
   const [activeRules, setActiveRules] = useState([]);
   const [isSettingDB, setIsSettingDB] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [targetDate, setTargetDate] = useState(() => new Date().toISOString().slice(0, 10));
   
   // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
   const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
@@ -253,14 +254,22 @@ function RoomInventory({ isAdmin }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '2' : '1'}</div>
+            
+            <input 
+              type="date" 
+              value={targetDate} 
+              onChange={(e) => setTargetDate(e.target.value)} 
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 1rem', outline: 'none' }}
+            />
+
             <button 
               className="btn" 
               style={{ width: '220px', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
               onClick={async () => {
-                if(!window.confirm("MariaDB 요약 테이블에서 최신 데이터를 가져와 현황판을 동기화하시겠습니까?")) return;
+                if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
                 setIsSettingDB(true);
                 try {
-                  const res = await fetch('https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary');
+                  const res = await fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`);
                   
                   const contentType = res.headers.get('content-type');
                   if (!contentType || !contentType.includes('application/json')) {
