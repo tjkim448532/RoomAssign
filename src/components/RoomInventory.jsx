@@ -263,7 +263,9 @@ function RoomInventory({ isAdmin }) {
                   
                   const contentType = res.headers.get('content-type');
                   if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error(`API 응답이 올바르지 않습니다. Vercel 서버리스 환경인지 확인해주세요.`);
+                    const text = await res.text();
+                    console.error("Vercel API 비정상 응답 (HTML 등):", text);
+                    throw new Error(`API 응답이 올바르지 않습니다. Vercel 서버리스 환경인지 확인해주세요. (응답: ${text.substring(0, 100)}...)`);
                   }
                   
                   const json = await res.json();
