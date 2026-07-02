@@ -221,6 +221,24 @@ function RoomInventory({ isAdmin }) {
     return { available16P, available35P, unbroken51PSets, availableDisabled51P };
   }, [rooms, activeTab]);
 
+  const previewStats = useMemo(() => {
+    if (!previewData || !previewData.reservations) return null;
+    const stats = { total: previewData.reservations.length, rooms: {} };
+    previewData.reservations.forEach(r => {
+      stats.rooms[r.roomType] = (stats.rooms[r.roomType] || 0) + 1;
+    });
+    return stats;
+  }, [previewData]);
+
+  const handlePreviewNoteChange = (resId, newNote) => {
+    setPreviewData(prev => ({
+      ...prev,
+      reservations: prev.reservations.map(r => 
+        r.reservationId === resId ? { ...r, notes: newNote } : r
+      )
+    }));
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-gray-400">객실 데이터를 불러오는 중...</div>;
   }
@@ -487,14 +505,25 @@ function RoomInventory({ isAdmin }) {
       
       {/* Sync Preview Modal */}
       {previewData && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
+          <div className="modal-content" style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 className="modal-title" style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>
               📋 마리아DB 데이터 동기화 미리보기
             </h3>
             <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
-              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다.
+              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다. 직원용 비교 대조를 위해 창이 고정 유지되며 직접 메모를 수정할 수 있습니다.
             </p>
+
+            {/* Subtotal Area */}
+            {previewStats && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+                <span style={{ fontWeight: 'bold', color: 'white' }}>총 대기 고객: {previewStats.total}명</span>
+                <span style={{ color: '#9CA3AF' }}>|</span>
+                {Object.entries(previewStats.rooms).sort((a,b)=>a[0].localeCompare(b[0])).map(([type, count]) => (
+                  <span key={type} style={{ color: '#E5E7EB' }}>{type}: <span style={{ color: '#34D399', fontWeight: 'bold' }}>{count}</span>개</span>
+                ))}
+              </div>
+            )}
             
             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
               <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', color: 'var(--text-main)' }}>
@@ -507,9 +536,12 @@ function RoomInventory({ isAdmin }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {previewData.reservations.map(res => (
+                  {previewData.reservations.map((res, index) => (
                     <tr key={res.reservationId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>{res.customerName}</td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
+                        <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
+                        {res.customerName}
+                      </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <span style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
                           {res.roomType}
@@ -527,7 +559,17 @@ function RoomInventory({ isAdmin }) {
                           <span style={{ display: 'inline-block', color: '#9CA3AF' }}>-</span>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>{res.notes || '-'}</td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>
+                        <input 
+                          type="text" 
+                          value={res.notes || ''} 
+                          onChange={e => handlePreviewNoteChange(res.reservationId, e.target.value)}
+                          placeholder="메모 추가..."
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '6px 8px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
+                          onFocus={e => e.target.style.border = '1px solid #6366f1'}
+                          onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                        />
+                      </td>
                     </tr>
                   ))}
                   {previewData.reservations.length === 0 && (
