@@ -302,7 +302,10 @@ function RoomInventory({ isAdmin }) {
       const extracted = selectedRes[0].customerName?.replace(/\(.*?\)/g, '').trim();
       repName = extracted || selectedRes[0].customerName;
     }
-    const groupText = `[일행: ${repName} 외 ${selectedRes.length - 1}명]`;
+    const inputGroupName = window.prompt("지정할 단체명(일행명)을 입력하세요:", repName);
+    if (inputGroupName === null) return; // 취소
+    const finalGroupName = inputGroupName.trim() || repName;
+    const groupText = `[일행: ${finalGroupName} 외 ${selectedRes.length - 1}명]`;
     
     setPreviewData(prev => ({
       ...prev,
@@ -310,8 +313,8 @@ function RoomInventory({ isAdmin }) {
         if (selectedForGroup.includes(r.reservationId)) {
           const currentNotes = r.notes || '';
           // 이미 일행 태그가 있다면 중복 방지
-          if (currentNotes.includes(groupText)) return r;
-          return { ...r, notes: currentNotes ? `${currentNotes} ${groupText}` : groupText };
+          const newNotes = currentNotes.includes(groupText) ? currentNotes : (currentNotes ? `${currentNotes} ${groupText}` : groupText);
+          return { ...r, notes: newNotes, groupName: finalGroupName };
         }
         return r;
       })
