@@ -33,10 +33,10 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
   logs.push(`자동 배정 엔진 시작: 총 ${reservations.length}건의 예약을 처리합니다.`);
   
-  // 0. 로컬 우선순위 정렬: 회원(is_member) > 골프예약(has_golf) 순으로 먼저 배정 기회 부여
+  // 0. 로컬 우선순위 정렬: VIP(is_vip) > 재방문(visit_count) > 회원(is_member) > 골프예약(tee_off_time/has_golf)
   const sortedReservations = [...reservations].sort((a, b) => {
-    const aScore = (a.is_member ? 2 : 0) + (a.has_golf ? 1 : 0);
-    const bScore = (b.is_member ? 2 : 0) + (b.has_golf ? 1 : 0);
+    const aScore = (a.is_vip ? 50 : 0) + (a.visit_count ? a.visit_count * 2 : 0) + (a.is_member ? 2 : 0) + ((a.tee_off_time || a.has_golf) ? 1 : 0);
+    const bScore = (b.is_vip ? 50 : 0) + (b.visit_count ? b.visit_count * 2 : 0) + (b.is_member ? 2 : 0) + ((b.tee_off_time || b.has_golf) ? 1 : 0);
     return bScore - aScore; // 내림차순 (점수가 높은 사람이 먼저 배정)
   });
 
@@ -54,6 +54,9 @@ export async function runAutoAssignment(reservations, currentRooms) {
       wantsHighFloor: false, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: false, otherKeywords: []
     };
     
+    // DB에서 파싱해준 Flag 우선 적용
+    if (res.req_high_floor) prefs.wantsHighFloor = true;
+    
     // 비고(메모) 기반 자연어 추가 분석 (AI 엔진 오프라인 대비 또는 보완)
     const guestNotes = res.notes || '';
     if (guestNotes.includes('고층') || guestNotes.includes('높은층') || guestNotes.includes('높은 층')) prefs.wantsHighFloor = true;
@@ -61,8 +64,9 @@ export async function runAutoAssignment(reservations, currentRooms) {
     if (guestNotes.includes('장애인') || guestNotes.includes('휠체어')) prefs.needsAccessible = true;
 
     // 단체(그룹) 일괄 배정 로직: 같은 그룹은 가급적 같은 동에 배정
-    if (res.groupName && !prefs.forcedBuilding && (guestNotes.includes('같은동') || guestNotes.includes('같은 동') || guestNotes.includes('인접') || guestNotes.includes('모여'))) {
-      const groupKey = res.groupName;
+    const groupName = res.group_name || res.groupName;
+    if (groupName && !prefs.forcedBuilding && (guestNotes.includes('같은동') || guestNotes.includes('같은 동') || guestNotes.includes('인접') || guestNotes.includes('모여'))) {
+      const groupKey = groupName;
       if (groupBuildingMap[groupKey]) {
         prefs.forcedBuilding = groupBuildingMap[groupKey];
         logs.push(`  └ 단체 자연어 분석: "같은동" 요청 반영 -> [${prefs.forcedBuilding}동] 강제 지정`);
@@ -106,11 +110,20 @@ export async function runAutoAssignment(reservations, currentRooms) {
 // guestNotes already defined earlier
     candidateRooms.forEach(room => {
       let score = 0;
-      if ((guestNotes.includes('조용') || guestNotes.includes('소음')) && room.features?.includes('조용함')) score += 10;
-      if ((guestNotes.includes('경치') || guestNotes.includes('뷰') || guestNotes.includes('전망')) && room.features?.includes('경치좋음')) score += 10;
-      if ((guestNotes.includes('채광') || guestNotes.includes('햇빛') || guestNotes.includes('밝은')) && room.features?.includes('채광좋음')) score += 10;
-      if ((guestNotes.includes('엘리베이터') || guestNotes.includes('가까운') || guestNotes.includes('걷기')) && room.features?.includes('엘리베이터가까움')) score += 10;
-      if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && room.features?.includes('넓은객실')) score += 10;
+      const roomFeatures = room.room_features || room.features || [];
+      const quietReq = res.req_quiet || guestNotes.includes('조용') || guestNotes.includes('소음');
+      if (quietReq && roomFeatures.includes('조용함')) score += 10;
+      
+      const viewReq = guestNotes.includes('경치') || guestNotes.includes('뷰') || guestNotes.includes('전망');
+      if (viewReq && roomFeatures.includes('경치좋음')) score += 10;
+      
+      const lightReq = guestNotes.includes('채광') || guestNotes.includes('햇빛') || guestNotes.includes('밝은');
+      if (lightReq && roomFeatures.includes('채광좋음')) score += 10;
+      
+      const elevatorReq = res.req_near_elevator || guestNotes.includes('엘리베이터') || guestNotes.includes('가까운') || guestNotes.includes('걷기');
+      if (elevatorReq && roomFeatures.includes('엘리베이터가까움')) score += 10;
+      
+      if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && roomFeatures.includes('넓은객실')) score += 10;
       if ((guestNotes.includes('트윈') || guestNotes.includes('침대 2개') || guestNotes.includes('침대두개')) && room.bedType && room.bedType.includes('+')) score += 15;
       
       room.matchScore = score;
@@ -120,8 +133,10 @@ export async function runAutoAssignment(reservations, currentRooms) {
     candidateRooms.sort((a, b) => {
       // 1순위: 장애인 객실 우선 배정 (조건 충족 시)
       if (prefs.needsAccessible) {
-        if (a.isDisabled && !b.isDisabled) return -1;
-        if (!a.isDisabled && b.isDisabled) return 1;
+        const aHandicap = a.is_handicap_accessible || a.isDisabled;
+        const bHandicap = b.is_handicap_accessible || b.isDisabled;
+        if (aHandicap && !bHandicap) return -1;
+        if (!aHandicap && bHandicap) return 1;
       }
 
       // 2순위: 특징 매칭 점수
@@ -145,10 +160,11 @@ export async function runAutoAssignment(reservations, currentRooms) {
       aiReason = `동 ${prefs.forcedBuilding} 강제 지정`;
     } else if (prefs.forcedRoom) {
       aiReason = `호 ${prefs.forcedRoom} 강제 지정`;
-    } else if (res.groupName) {
-      aiReason = `그룹 ${res.groupName} 동일동 배정`;
+    } else if (groupName) {
+      aiReason = `그룹 ${groupName} 동일동 배정`;
     } else if (selectedRoom.matchScore > 0) {
-      const featureList = selectedRoom.features?.join(', ') || selectedRoom.bedType;
+      const roomFeatures = selectedRoom.room_features || selectedRoom.features || [];
+      const featureList = roomFeatures.join(', ') || selectedRoom.bedType;
       aiReason = `특징 매칭 (${featureList})`;
     } else {
       aiReason = '일반 배정';
@@ -166,8 +182,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
     if (noteLower.includes('complaint') || noteLower.includes('주의')) tags.push('주의');
     if (noteLower.match(/(\d{1,2}:\d{2})|early|얼리|14시|13시|12시/)) tags.push('청소긴급');
 
-    if (res.groupName && !groupBuildingMap[res.groupName]) {
-      groupBuildingMap[res.groupName] = selectedRoom.building;
+    if (groupName && !groupBuildingMap[groupName]) {
+      groupBuildingMap[groupName] = selectedRoom.building;
     }
 
     // 4. 배정 확정 및 51평 연동 처리
@@ -179,7 +195,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
           assignedRooms: [selectedRoom.id, adjacentRoom.id],
           type: '51P',
           aiReason: aiReason,
-          tags: tags
+          tags: tags,
+          group_name: groupName
         });
         logs.push(`  ✅ [배정 성공] 51평형(락오프): ${selectedRoom.roomNumber}호 + ${adjacentRoom.roomNumber}호 통합 배정 완료 – ${aiReason}`);
       
@@ -193,7 +210,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
         assignedRooms: [selectedRoom.id],
         type: effectiveRoomType,
         aiReason: aiReason,
-        tags: tags
+        tags: tags,
+        group_name: groupName
       });
       logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료 – ${aiReason}`);
       

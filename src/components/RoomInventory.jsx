@@ -15,7 +15,7 @@ function RoomInventory({ isAdmin }) {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [highlightGroup, setHighlightGroup] = useState('');
-  const groupOptions = Array.from(new Set(rooms.map(r => r.groupName).filter(Boolean)));
+  const groupOptions = Array.from(new Set(rooms.map(r => r.group_name || r.groupName).filter(Boolean)));
 
   const [notesInput, setNotesInput] = useState('');
   const [featuresInput, setFeaturesInput] = useState([]);
@@ -102,7 +102,7 @@ function RoomInventory({ isAdmin }) {
               notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`,
               aiReason: assignment.aiReason || '',
               tags: assignment.tags || [],
-              groupName: assignment.groupName || null
+              group_name: assignment.group_name || assignment.groupName || null
             });
           });
           if (assignment.reservationId) {
@@ -185,7 +185,7 @@ function RoomInventory({ isAdmin }) {
         notes: finalNotes,
         aiReason: selectedRoom.aiReason || '',
         tags: selectedRoom.tags || [],
-        groupName: selectedRoom.groupName || null
+        group_name: selectedRoom.group_name || selectedRoom.groupName || null
       };
       batch.update(roomRef, updateData);
 
@@ -309,7 +309,7 @@ function RoomInventory({ isAdmin }) {
     const selectedRes = previewData.reservations.filter(r => selectedForGroup.includes(r.reservationId));
     if (selectedRes.length === 0) return;
     
-    let repName = selectedRes[0].groupName || selectedRes[0].agencyName;
+    let repName = selectedRes[0].group_name || selectedRes[0].groupName || selectedRes[0].agencyName;
     if (!repName) {
       const extracted = selectedRes[0].customerName?.replace(/\(.*?\)/g, '').trim();
       repName = extracted || selectedRes[0].customerName;
@@ -325,7 +325,7 @@ function RoomInventory({ isAdmin }) {
         if (selectedForGroup.includes(r.reservationId)) {
           const currentNotes = r.notes || '';
           const newNotes = currentNotes.includes(groupText) ? currentNotes : (currentNotes ? `${currentNotes} ${groupText}` : groupText);
-          return { ...r, notes: newNotes, groupName: finalGroupName };
+          return { ...r, notes: newNotes, group_name: finalGroupName };
         }
         return r;
       })
@@ -406,7 +406,7 @@ function RoomInventory({ isAdmin }) {
                       if (info && !r.groupName) {
                         return {
                           ...r,
-                          groupName: info.groupName,
+                          group_name: info.group_name || info.groupName,
                           notes: r.notes ? r.notes : info.commonNotes
                         };
                       }
@@ -504,7 +504,7 @@ function RoomInventory({ isAdmin }) {
                 setFeaturesInput(room.features || []);
               }}
               className={`room-card ${room.status}`}
-              style={highlightGroup && room.groupName === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
+              style={highlightGroup && (room.group_name || room.groupName) === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
             >
               <div className="room-number">
                  {room.roomNumber}
@@ -698,9 +698,9 @@ function RoomInventory({ isAdmin }) {
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
                         <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
-                        {res.groupName || res.agencyName ? (
+                        {res.group_name || res.groupName || res.agencyName ? (
                           <>
-                            <span style={{ color: '#F87171' }}>{res.groupName || res.agencyName}</span>
+                            <span style={{ color: '#F87171' }}>{res.group_name || res.groupName || res.agencyName}</span>
                             <span style={{ fontSize: '0.8rem', color: '#9CA3AF', marginLeft: '6px', fontWeight: 'normal' }}>({res.customerName})</span>
                           </>
                         ) : (
