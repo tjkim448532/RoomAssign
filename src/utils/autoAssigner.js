@@ -103,7 +103,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
     }
 
     // 3. 특징 매칭 스코어링
-    const guestNotes = res.notes || '';
+// guestNotes already defined earlier
     candidateRooms.forEach(room => {
       let score = 0;
       if ((guestNotes.includes('조용') || guestNotes.includes('소음')) && room.features?.includes('조용함')) score += 10;
