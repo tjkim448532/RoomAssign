@@ -361,19 +361,29 @@ function RoomInventory({ isAdmin }) {
                 if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
                 setIsSettingDB(true);
                 try {
-                  const res = await fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`);
+                  const prevDate1 = new Date(new Date(targetDate).getTime() - 86400000).toISOString().split('T')[0];
+                  const prevDate2 = new Date(new Date(targetDate).getTime() - 86400000 * 2).toISOString().split('T')[0];
                   
-                  const contentType = res.headers.get('content-type');
-                  if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error("Backend API 비정상 응답 (HTML 등):", text);
-                    throw new Error(`API 응답이 올바르지 않습니다. 백엔드 서버 상태를 확인해주세요.`);
-                  }
+                  const [resToday, resPrev1, resPrev2] = await Promise.all([
+                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`),
+                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate1}`),
+                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate2}`)
+                  ]);
                   
-                  const json = await res.json();
-                  if (res.ok && json.success) {
+                  const [jsonToday, jsonPrev1, jsonPrev2] = await Promise.all([
+                    resToday.json(),
+                    resPrev1.json().catch(() => ({ success: false, data: { reservations: [] } })),
+                    resPrev2.json().catch(() => ({ success: false, data: { reservations: [] } }))
+                  ]);
+
+                  if (resToday.ok && jsonToday.success) {
+                    const allReservations = [
+                      ...(jsonToday.data?.reservations || []),
+                      ...(jsonPrev1.data?.reservations || []),
+                      ...(jsonPrev2.data?.reservations || [])
+                    ];
                     const groupInfoMap = {};
-                    json.data.reservations.forEach(r => {
+                    allReservations.forEach(r => {
                       if (r.notes) {
                         const groupMatch = r.notes.match(/단\s*체\s*명\s*:\s*(.+)/);
                         if (groupMatch) {
@@ -385,7 +395,7 @@ function RoomInventory({ isAdmin }) {
                       }
                     });
 
-                    const enrichedReservations = json.data.reservations.map(r => {
+                    const enrichedReservations = jsonToday.data.reservations.map(r => {
                       const info = groupInfoMap[r.customerName];
                       if (info && !r.groupName) {
                         return {
@@ -397,9 +407,9 @@ function RoomInventory({ isAdmin }) {
                       return r;
                     });
 
-                    setPreviewData({ reservations: enrichedReservations, rooms: json.data.rooms });
+                    setPreviewData({ reservations: enrichedReservations, rooms: jsonToday.data.rooms });
                   } else {
-                    throw new Error(`MariaDB 연동 실패: ${json.message || 'API 오류'}`);
+                    throw new Error(`MariaDB 연동 실패: API 오류`);
                   }
                 } catch (e) {
                   console.error(e);

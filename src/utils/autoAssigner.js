@@ -7,6 +7,7 @@
 export async function runAutoAssignment(reservations, currentRooms) {
   const assignments = [];
   const logs = [];
+  const groupBuildingMap = {}; // 그룹명 -> 배정된 첫 동 번호
   
   // 0-1. 이미 배정된(연박 중 등) 객실 번호 수집하여 보호
   const alreadyAssignedRoomNumbers = [];
@@ -52,7 +53,23 @@ export async function runAutoAssignment(reservations, currentRooms) {
     const prefs = res.preferences || {
       wantsHighFloor: false, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: false, otherKeywords: []
     };
-    logs.push(`  └ AI 분석 결과: ${JSON.stringify(prefs)}`);
+    
+    // 비고(메모) 기반 자연어 추가 분석 (AI 엔진 오프라인 대비 또는 보완)
+    const guestNotes = res.notes || '';
+    if (guestNotes.includes('고층') || guestNotes.includes('높은층') || guestNotes.includes('높은 층')) prefs.wantsHighFloor = true;
+    if (guestNotes.includes('저층') || guestNotes.includes('낮은층') || guestNotes.includes('낮은 층') || guestNotes.includes('1층')) prefs.wantsLowFloor = true;
+    if (guestNotes.includes('장애인') || guestNotes.includes('휠체어')) prefs.needsAccessible = true;
+
+    // 단체(그룹) 일괄 배정 로직: 같은 그룹은 가급적 같은 동에 배정
+    if (res.groupName && !prefs.forcedBuilding && (guestNotes.includes('같은동') || guestNotes.includes('같은 동') || guestNotes.includes('인접') || guestNotes.includes('모여'))) {
+      const groupKey = res.groupName;
+      if (groupBuildingMap[groupKey]) {
+        prefs.forcedBuilding = groupBuildingMap[groupKey];
+        logs.push(`  └ 단체 자연어 분석: "같은동" 요청 반영 -> [${prefs.forcedBuilding}동] 강제 지정`);
+      }
+    }
+
+    logs.push(`  └ 통합 분석 결과: ${JSON.stringify(prefs)}`);
 
     // 2. 타입에 맞는 빈 방 필터링 (강제 조건 덮어쓰기 로직 추가)
     const rawType = prefs.forcedSize || res.roomType;
@@ -94,6 +111,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
       if ((guestNotes.includes('채광') || guestNotes.includes('햇빛') || guestNotes.includes('밝은')) && room.features?.includes('채광좋음')) score += 10;
       if ((guestNotes.includes('엘리베이터') || guestNotes.includes('가까운') || guestNotes.includes('걷기')) && room.features?.includes('엘리베이터가까움')) score += 10;
       if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && room.features?.includes('넓은객실')) score += 10;
+      if ((guestNotes.includes('트윈') || guestNotes.includes('침대 2개') || guestNotes.includes('침대두개')) && room.bedType && room.bedType.includes('+')) score += 15;
       
       room.matchScore = score;
     });
@@ -122,7 +140,11 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
     const selectedRoom = candidateRooms[0];
     if (selectedRoom.matchScore > 0) {
-      logs.push(`  └ ✨ AI 특징 매칭: 고객 메모 분석을 통해 가장 알맞은 특성(${selectedRoom.features.join(', ')})을 가진 ${selectedRoom.roomNumber}호 배정`);
+      logs.push(`  └ ✨ AI 특징 매칭: 고객 메모 분석을 통해 가장 알맞은 특성(${selectedRoom.features?.join(', ') || selectedRoom.bedType})을 가진 ${selectedRoom.roomNumber}호 배정`);
+    }
+
+    if (res.groupName && !groupBuildingMap[res.groupName]) {
+      groupBuildingMap[res.groupName] = selectedRoom.building;
     }
 
     // 4. 배정 확정 및 51평 연동 처리
