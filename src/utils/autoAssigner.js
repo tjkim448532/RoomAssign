@@ -64,19 +64,45 @@ export async function runAutoAssignment(reservations, currentRooms) {
       continue;
     }
 
-    // 3. 선호도에 따른 정렬/선택 (단순 로직)
-    if (prefs.wantsHighFloor) {
-      candidateRooms = candidateRooms.sort((a, b) => b.roomNumber.localeCompare(a.roomNumber));
-    } else if (prefs.wantsLowFloor) {
-      candidateRooms = candidateRooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber));
-    }
+    // 3. 특징 매칭 스코어링
+    const guestNotes = res.notes || '';
+    candidateRooms.forEach(room => {
+      let score = 0;
+      if ((guestNotes.includes('조용') || guestNotes.includes('소음')) && room.features?.includes('조용함')) score += 10;
+      if ((guestNotes.includes('경치') || guestNotes.includes('뷰') || guestNotes.includes('전망')) && room.features?.includes('경치좋음')) score += 10;
+      if ((guestNotes.includes('채광') || guestNotes.includes('햇빛') || guestNotes.includes('밝은')) && room.features?.includes('채광좋음')) score += 10;
+      if ((guestNotes.includes('엘리베이터') || guestNotes.includes('가까운') || guestNotes.includes('걷기')) && room.features?.includes('엘리베이터가까움')) score += 10;
+      if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && room.features?.includes('넓은객실')) score += 10;
+      
+      room.matchScore = score;
+    });
 
-    if (prefs.needsAccessible) {
-      const disabledRooms = candidateRooms.filter(r => r.isDisabled);
-      if (disabledRooms.length > 0) candidateRooms = disabledRooms;
-    }
+    // 4. 선호도에 따른 정렬/선택
+    candidateRooms.sort((a, b) => {
+      // 1순위: 장애인 객실 우선 배정 (조건 충족 시)
+      if (prefs.needsAccessible) {
+        if (a.isDisabled && !b.isDisabled) return -1;
+        if (!a.isDisabled && b.isDisabled) return 1;
+      }
+
+      // 2순위: 특징 매칭 점수
+      if (b.matchScore !== a.matchScore) {
+        return b.matchScore - a.matchScore;
+      }
+      
+      // 3순위: 층수 선호도
+      if (prefs.wantsHighFloor) {
+        return b.roomNumber.localeCompare(a.roomNumber);
+      } else if (prefs.wantsLowFloor) {
+        return a.roomNumber.localeCompare(b.roomNumber);
+      }
+      return 0;
+    });
 
     const selectedRoom = candidateRooms[0];
+    if (selectedRoom.matchScore > 0) {
+      logs.push(`  └ ✨ AI 특징 매칭: 고객 메모 분석을 통해 가장 알맞은 특성(${selectedRoom.features.join(', ')})을 가진 ${selectedRoom.roomNumber}호 배정`);
+    }
 
     // 4. 배정 확정 및 51평 연동 처리
     if (effectiveRoomType === '51P') {

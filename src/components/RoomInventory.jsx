@@ -16,6 +16,7 @@ function RoomInventory({ isAdmin }) {
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [notesInput, setNotesInput] = useState('');
+  const [featuresInput, setFeaturesInput] = useState([]);
 
   const [hasAutoAssigned, setHasAutoAssigned] = useState(false);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
@@ -184,9 +185,28 @@ function RoomInventory({ isAdmin }) {
       await batch.commit();
       setSelectedRoom(null);
       setNotesInput('');
+      setFeaturesInput([]);
     } catch (error) {
       console.error('Error updating status:', error);
       alert('업데이트 중 오류가 발생했습니다.');
+    }
+  };
+
+  const AVAILABLE_FEATURES = ['경치좋음', '조용함', '채광좋음', '엘리베이터가까움', '넓은객실'];
+
+  const handleToggleFeature = async (feature) => {
+    if (!selectedRoom) return;
+    const newFeatures = featuresInput.includes(feature) 
+      ? featuresInput.filter(f => f !== feature)
+      : [...featuresInput, feature];
+    
+    setFeaturesInput(newFeatures);
+    
+    try {
+      const roomRef = doc(db, 'rooms', selectedRoom.id);
+      await updateDoc(roomRef, { features: newFeatures });
+    } catch(e) {
+      console.error('특징 업데이트 실패:', e);
     }
   };
 
@@ -495,6 +515,7 @@ function RoomInventory({ isAdmin }) {
             onClick={() => {
               setSelectedRoom(room);
               setNotesInput(room.notes || '');
+              setFeaturesInput(room.features || []);
             }}
             className={`room-card ${room.status}`}
           >
@@ -512,6 +533,16 @@ function RoomInventory({ isAdmin }) {
             {room.isConnecting && (
               <div className="connecting-info">
                 🔗 커넥팅 ({room.adjacent})
+              </div>
+            )}
+            
+            {room.features && room.features.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                {room.features.map(feat => (
+                  <span key={feat} style={{ background: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                    ✨ {feat}
+                  </span>
+                ))}
               </div>
             )}
             
@@ -545,6 +576,31 @@ function RoomInventory({ isAdmin }) {
                 className="input-field"
                 placeholder="예: 홍길동 고객님"
               />
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+              <label className="input-label" style={{ marginBottom: '0.5rem', display: 'block' }}>🌟 이 방만의 특별한 장점 (AI 배정 참조용)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {AVAILABLE_FEATURES.map(feat => (
+                  <button
+                    key={feat}
+                    onClick={() => handleToggleFeature(feat)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      border: featuresInput.includes(feat) ? '1px solid #fbbf24' : '1px solid var(--border-color)',
+                      background: featuresInput.includes(feat) ? 'rgba(251, 191, 36, 0.2)' : 'transparent',
+                      color: featuresInput.includes(feat) ? '#fbbf24' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {featuresInput.includes(feat) ? '✓ ' : '+ '}{feat}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>선택하신 특징은 즉시 자동 저장되며, AI가 고객 메모와 매칭하여 배정합니다.</p>
             </div>
             
             <div>
