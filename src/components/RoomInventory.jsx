@@ -299,8 +299,8 @@ function RoomInventory({ isAdmin }) {
     // 대표자 이름 및 텍스트 생성
     let repName = selectedRes[0].groupName || selectedRes[0].agencyName;
     if (!repName) {
-      const match = selectedRes[0].customerName?.match(/\((.*?)\)/);
-      repName = match ? match[1].trim() : selectedRes[0].customerName;
+      const extracted = selectedRes[0].customerName?.replace(/\(.*?\)/g, '').trim();
+      repName = extracted || selectedRes[0].customerName;
     }
     const groupText = `[일행: ${repName} 외 ${selectedRes.length - 1}명]`;
     
@@ -649,7 +649,7 @@ function RoomInventory({ isAdmin }) {
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
                         <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
-                        {res.groupName || res.agencyName ? `${res.groupName || res.agencyName}` : (res.customerName?.match(/\((.*?)\)/) ? res.customerName.match(/\((.*?)\)/)[1].trim() : res.customerName)}
+                        {res.groupName || res.agencyName ? `${res.groupName || res.agencyName}` : (res.customerName?.includes('(') && res.customerName.replace(/\(.*?\)/g, '').trim() ? res.customerName.replace(/\(.*?\)/g, '').trim() : res.customerName)}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <select 
