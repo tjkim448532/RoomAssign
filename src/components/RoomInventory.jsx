@@ -23,6 +23,7 @@ function RoomInventory({ isAdmin }) {
   const [isSettingDB, setIsSettingDB] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [targetDate, setTargetDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedForGroup, setSelectedForGroup] = useState([]);
   
   // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
   const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
@@ -266,6 +267,34 @@ function RoomInventory({ isAdmin }) {
         r.reservationId === resId ? { ...r, roomType: newType } : r
       )
     }));
+  };
+
+  const handleGroupSelected = () => {
+    if (selectedForGroup.length < 2) return;
+    
+    // 선택된 예약건 찾기
+    const selectedRes = previewData.reservations.filter(r => selectedForGroup.includes(r.reservationId));
+    if (selectedRes.length === 0) return;
+    
+    // 대표자 이름 및 텍스트 생성
+    const repName = selectedRes[0].customerName;
+    const groupText = `[일행: ${repName} 외 ${selectedRes.length - 1}명]`;
+    
+    setPreviewData(prev => ({
+      ...prev,
+      reservations: prev.reservations.map(r => {
+        if (selectedForGroup.includes(r.reservationId)) {
+          const currentNotes = r.notes || '';
+          // 이미 일행 태그가 있다면 중복 방지
+          if (currentNotes.includes(groupText)) return r;
+          return { ...r, notes: currentNotes ? `${currentNotes} ${groupText}` : groupText };
+        }
+        return r;
+      })
+    }));
+    
+    setSelectedForGroup([]);
+    alert(`성공적으로 ${selectedRes.length}명을 일행으로 묶었습니다! (메모 자동 추가)`);
   };
 
   if (loading) {
@@ -568,9 +597,35 @@ function RoomInventory({ isAdmin }) {
             )}
             
             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', minHeight: '36px' }}>
+                <span style={{ color: '#9CA3AF', fontSize: '0.9rem' }}>
+                  {selectedForGroup.length > 0 ? `${selectedForGroup.length}명 선택됨` : '리스트에서 일행을 체크하여 하나로 묶어보세요.'}
+                </span>
+                {selectedForGroup.length >= 2 && (
+                  <button 
+                    onClick={handleGroupSelected}
+                    style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    🤝 선택한 {selectedForGroup.length}명 일행으로 묶기
+                  </button>
+                )}
+              </div>
+
               <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', color: 'var(--text-main)' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.5rem', width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedForGroup.length === previewData.reservations.length && previewData.reservations.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedForGroup(previewData.reservations.map(r => r.reservationId));
+                          else setSelectedForGroup([]);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     <th style={{ padding: '0.5rem' }}>예약자명</th>
                     <th style={{ padding: '0.5rem' }}>선택 평형</th>
                     <th style={{ padding: '0.5rem' }}>예약/회원 정보</th>
@@ -579,7 +634,18 @@ function RoomInventory({ isAdmin }) {
                 </thead>
                 <tbody>
                   {previewData.reservations.map((res, index) => (
-                    <tr key={res.reservationId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <tr key={res.reservationId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: selectedForGroup.includes(res.reservationId) ? 'rgba(79, 70, 229, 0.15)' : 'transparent', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedForGroup.includes(res.reservationId)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedForGroup(prev => [...prev, res.reservationId]);
+                            else setSelectedForGroup(prev => prev.filter(id => id !== res.reservationId));
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
                         <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
                         {res.customerName}
@@ -633,7 +699,7 @@ function RoomInventory({ isAdmin }) {
                   ))}
                   {previewData.reservations.length === 0 && (
                     <tr>
-                      <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: '#9CA3AF' }}>예약 데이터가 없습니다.</td>
+                      <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#9CA3AF' }}>예약 데이터가 없습니다.</td>
                     </tr>
                   )}
                 </tbody>
