@@ -273,17 +273,29 @@ function RoomInventory({ isAdmin }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '2' : '1'}</div>
             
-            <input 
-              type="date" 
-              value={targetDate} 
-              onChange={(e) => setTargetDate(e.target.value)} 
-              onKeyDown={(e) => e.preventDefault()} 
-              style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 1rem', outline: 'none', cursor: 'pointer' }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '220px' }}>
+              <select 
+                value={targetDate} 
+                onChange={(e) => setTargetDate(e.target.value)}
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', outline: 'none', cursor: 'pointer', width: '100%' }}
+              >
+                {Array.from({ length: 7 }, (_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + (i - 3));
+                  const dateStr = d.toISOString().split('T')[0];
+                  let label = dateStr;
+                  if (i - 3 === -2) label = `${dateStr} (그제)`;
+                  if (i - 3 === -1) label = `${dateStr} (어제)`;
+                  if (i - 3 === 0) label = `${dateStr} (오늘)`;
+                  if (i - 3 === 1) label = `${dateStr} (내일)`;
+                  if (i - 3 === 2) label = `${dateStr} (모레)`;
+                  return <option key={dateStr} value={dateStr}>{label}</option>;
+                })}
+              </select>
 
-            <button 
-              className="btn" 
-              style={{ width: '220px', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
+              <button 
+                className="btn" 
+                style={{ width: '100%', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
               onClick={async () => {
                 if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
                 setIsSettingDB(true);
@@ -319,8 +331,18 @@ function RoomInventory({ isAdmin }) {
               }}
               disabled={isSettingDB}
             >
-              {isSettingDB ? '⏳ 데이터 불러오는 중...' : `🔄 ${targetDate} 예약리스트 불러오기`}
+              {isSettingDB ? '⏳ 데이터 불러오는 중...' : (() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                if (targetDate === yesterdayStr) return '🔄 어제날짜 예약 리스트';
+                if (targetDate === todayStr) return '🔄 오늘날짜 예약 리스트';
+                return `🔄 ${targetDate} 예약 리스트`;
+              })()}
             </button>
+            </div>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>선택하신 날짜의 요약 테이블을 읽어와 화면에 반영합니다.</span>
           </div>
 
