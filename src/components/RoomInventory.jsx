@@ -629,7 +629,7 @@ function RoomInventory({ isAdmin }) {
                     </th>
                     <th style={{ padding: '0.5rem' }}>예약자명</th>
                     <th style={{ padding: '0.5rem' }}>선택 평형</th>
-                    <th style={{ padding: '0.5rem' }}>예약/회원 정보</th>
+                    <th style={{ padding: '0.5rem' }}>예약/투숙 정보</th>
                     <th style={{ padding: '0.5rem' }}>요청 메모</th>
                   </tr>
                 </thead>
@@ -674,16 +674,43 @@ function RoomInventory({ isAdmin }) {
                         </select>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}>
-                        {Boolean(res.is_member) || res.is_member === 1 ? (
-                          <span style={{ display: 'inline-block', marginRight: '6px', color: '#FCD34D', fontWeight: 'bold' }}>👑 회원</span>
-                        ) : (
-                          <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
-                        )}
-                        {Boolean(res.has_golf) || res.has_golf === 1 ? (
-                          <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold' }}>⛳ 골프예약</span>
-                        ) : (
-                          <span style={{ display: 'inline-block', color: '#9CA3AF' }}>-</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                          {Boolean(res.is_member) || res.is_member === 1 ? (
+                            <span style={{ display: 'inline-block', marginRight: '6px', color: '#FCD34D', fontWeight: 'bold' }}>👑 회원</span>
+                          ) : (
+                            <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
+                          )}
+                          {Boolean(res.has_golf) || res.has_golf === 1 ? (
+                            <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold' }}>⛳ 골프예약</span>
+                          ) : (
+                            <span style={{ display: 'inline-block', color: '#9CA3AF' }}>-</span>
+                          )}
+                        </div>
+                        {(() => {
+                          const checkIn = new Date(res.checkInDate || targetDate);
+                          const target = new Date(targetDate);
+                          const currentDay = Math.floor((target - checkIn) / (1000 * 60 * 60 * 24)) + 1;
+                          const isMultiNight = res.stayLength > 1;
+                          const checkOutStr = new Date(res.checkOutDate || checkIn).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {isMultiNight ? (
+                                <span style={{ fontSize: '0.8rem', color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start' }}>
+                                  🛌 연박 ({res.stayLength}박) • 오늘 {currentDay}일차 • {checkOutStr} 퇴실
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.8rem', color: '#9CA3AF', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start' }}>
+                                  단박 ({checkOutStr} 퇴실)
+                                </span>
+                              )}
+                              {res.assignedRoom && (
+                                <span style={{ fontSize: '0.8rem', color: '#FCD34D', background: 'rgba(252,211,77,0.1)', border: '1px solid rgba(252,211,77,0.2)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start' }}>
+                                  ✔️ 사용중인 방: {res.assignedRoom}호
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>
                         <input 
