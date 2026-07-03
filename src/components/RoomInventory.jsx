@@ -259,6 +259,15 @@ function RoomInventory({ isAdmin }) {
     }));
   };
 
+  const handlePreviewRoomTypeChange = (resId, newType) => {
+    setPreviewData(prev => ({
+      ...prev,
+      reservations: prev.reservations.map(r => 
+        r.reservationId === resId ? { ...r, roomType: newType } : r
+      )
+    }));
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-gray-400">객실 데이터를 불러오는 중...</div>;
   }
@@ -576,9 +585,26 @@ function RoomInventory({ isAdmin }) {
                         {res.customerName}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <span style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                          {res.roomType}
-                        </span>
+                        <select 
+                          value={res.roomType || ''}
+                          onChange={e => handlePreviewRoomTypeChange(res.reservationId, e.target.value)}
+                          style={{ 
+                            background: res.roomType ? 'rgba(99, 102, 241, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
+                            color: res.roomType ? '#818cf8' : '#fca5a5', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px', 
+                            fontSize: '0.85rem',
+                            border: res.roomType ? 'none' : '1px solid #ef4444',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            colorScheme: 'dark'
+                          }}
+                        >
+                          <option value="" disabled>평형 선택 필요!</option>
+                          <option value="16평">16평</option>
+                          <option value="35평">35평</option>
+                          <option value="51평">51평</option>
+                        </select>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}>
                         {Boolean(res.is_member) || res.is_member === 1 ? (
