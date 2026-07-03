@@ -34,7 +34,9 @@ export async function runAutoAssignment(reservations, currentRooms) {
     logs.push(`  └ AI 분석 결과: ${JSON.stringify(prefs)}`);
 
     // 2. 타입에 맞는 빈 방 필터링 (강제 조건 덮어쓰기 로직 추가)
-    const effectiveRoomType = prefs.forcedSize || res.roomType;
+    const rawType = prefs.forcedSize || res.roomType;
+    const effectiveRoomType = rawType.replace('평', 'P'); // "16평" -> "16P"로 변환
+    
     let candidateRooms = availableRooms.filter(r => {
       // 강제 평형 적용 시, 원래 51P 예약이 아니어도 51P처럼 동작해야 할 수 있으나
       // 복잡하므로 일단 effectiveRoomType 기준으로 size 매칭
