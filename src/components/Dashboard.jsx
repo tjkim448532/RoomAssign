@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import RoomInventory from './RoomInventory';
 
 function Dashboard({ user, role }) {
@@ -9,6 +9,12 @@ function Dashboard({ user, role }) {
   const [users, setUsers] = useState([]);
   const [newRecord, setNewRecord] = useState('');
   const [currentTab, setCurrentTab] = useState('inventory'); // 'inventory', 'records'
+
+  // AI Rules State
+  const [rules, setRules] = useState([]);
+  const [newRule, setNewRule] = useState('');
+  const [isOneTime, setIsOneTime] = useState(false);
+  const [isRuleLoading, setIsRuleLoading] = useState(false);
 
   const isAdmin = role === 'admin';
 
@@ -20,17 +26,25 @@ function Dashboard({ user, role }) {
     });
 
     let unsubUsers;
+    let unsubRules;
     if (isAdmin) {
       // Fetch users for admin
       const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
       unsubUsers = onSnapshot(qUsers, (snapshot) => {
         setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
+      
+      // Fetch AI rules for admin
+      const qRules = query(collection(db, 'ai_rules'), orderBy('createdAt', 'desc'));
+      unsubRules = onSnapshot(qRules, (snapshot) => {
+        setRules(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
     }
 
     return () => {
       unsubRecords();
       if (unsubUsers) unsubUsers();
+      if (unsubRules) unsubRules();
     };
   }, [isAdmin]);
 
@@ -60,6 +74,43 @@ function Dashboard({ user, role }) {
       await updateDoc(userRef, { role: newRole });
     } catch (error) {
       console.error("Error updating role: ", error);
+    }
+  };
+
+  const handleAddRule = async () => {
+    if (!newRule.trim()) return;
+    setIsRuleLoading(true);
+    try {
+      await addDoc(collection(db, 'ai_rules'), {
+        text: newRule,
+        isActive: true,
+        isOneTime: isOneTime,
+        createdAt: serverTimestamp()
+      });
+      setNewRule('');
+    } catch (error) {
+      console.error('규칙 추가 실패:', error);
+      alert('규칙 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsRuleLoading(false);
+    }
+  };
+
+  const toggleRuleActive = async (id, currentStatus) => {
+    try {
+      const ruleRef = doc(db, 'ai_rules', id);
+      await updateDoc(ruleRef, { isActive: !currentStatus });
+    } catch (error) {
+      console.error('상태 변경 실패:', error);
+    }
+  };
+
+  const deleteRule = async (id) => {
+    if (!window.confirm('이 특수 규칙을 삭제하시겠습니까?')) return;
+    try {
+      await deleteDoc(doc(db, 'ai_rules', id));
+    } catch (error) {
+      console.error('삭제 실패:', error);
     }
   };
 
@@ -140,7 +191,7 @@ function Dashboard({ user, role }) {
 
           {/* Admin Section */}
           {isAdmin && (
-            <section>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               <div className="glass-card">
                 <h2 style={{ marginBottom: '1.5rem' }}>사용자 권한 관리</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -167,6 +218,83 @@ function Dashboard({ user, role }) {
                       </select>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* AI Rule Management */}
+              <div className="glass-card">
+                <h2 style={{ marginBottom: '1.5rem' }}>AI 특별 배정 규칙 관리</h2>
+                
+                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    placeholder="시스템에 내릴 자연어 지시사항을 입력하세요... (예: 하나은행 워크샵 고객들은 103동으로 배정해)"
+                    value={newRule}
+                    onChange={(e) => setNewRule(e.target.value)}
+                    style={{ resize: 'none', marginBottom: '1rem' }}
+                  ></textarea>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isOneTime}
+                        onChange={(e) => setIsOneTime(e.target.checked)}
+                        style={{ width: '1rem', height: '1rem', accentColor: 'var(--accent-indigo)' }}
+                      />
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>이번 1회만 단발성으로 적용</span>
+                    </label>
+                    <button 
+                      className="btn btn-gradient"
+                      onClick={handleAddRule}
+                      disabled={isRuleLoading || !newRule.trim()}
+                    >
+                      규칙 추가
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {rules.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>등록된 특수 규칙이 없습니다.</p>
+                  ) : (
+                    rules.map(rule => (
+                      <div key={rule.id} style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${rule.isActive ? 'var(--accent-indigo)' : 'var(--border-color)'}`,
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: '1rem',
+                        opacity: rule.isActive ? 1 : 0.5
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: '0.95rem', lineHeight: '1.4', marginBottom: '0.5rem' }}>{rule.text}</p>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {rule.isOneTime && <span className="room-status-badge" style={{ color: '#FCD34D', background: 'rgba(252, 211, 77, 0.1)', border: '1px solid rgba(252, 211, 77, 0.2)' }}>단발성</span>}
+                            {!rule.isOneTime && <span className="room-status-badge" style={{ color: '#6EE7B7', background: 'rgba(110, 231, 183, 0.1)', border: '1px solid rgba(110, 231, 183, 0.2)' }}>항시 유지</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => toggleRuleActive(rule.id, rule.isActive)}
+                            style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                          >
+                            {rule.isActive ? '끄기 (OFF)' : '켜기 (ON)'}
+                          </button>
+                          <button 
+                            onClick={() => deleteRule(rule.id)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--error-color)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </section>
