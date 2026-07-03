@@ -291,24 +291,14 @@ function RoomInventory({ isAdmin }) {
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '2' : '1'}</div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '220px' }}>
-              <select 
+              <input 
+                type="date" 
                 value={targetDate} 
-                onChange={(e) => setTargetDate(e.target.value)}
-                style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', outline: 'none', cursor: 'pointer', width: '100%' }}
-              >
-                {Array.from({ length: 7 }, (_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + (i - 3));
-                  const dateStr = d.toISOString().split('T')[0];
-                  let label = dateStr;
-                  if (i - 3 === -2) label = `${dateStr} (그제)`;
-                  if (i - 3 === -1) label = `${dateStr} (어제)`;
-                  if (i - 3 === 0) label = `${dateStr} (오늘)`;
-                  if (i - 3 === 1) label = `${dateStr} (내일)`;
-                  if (i - 3 === 2) label = `${dateStr} (모레)`;
-                  return <option key={dateStr} value={dateStr}>{label}</option>;
-                })}
-              </select>
+                onChange={(e) => setTargetDate(e.target.value)} 
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', outline: 'none', cursor: 'pointer', width: '100%', colorScheme: 'dark' }}
+              />
 
               <button 
                 className="btn" 
