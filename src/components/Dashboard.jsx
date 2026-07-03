@@ -68,6 +68,22 @@ function Dashboard({ user, role }) {
     }
   };
 
+  const handleDeleteRecord = async (recordId, authorId) => {
+    // 본인이 작성한 글이거나 관리자만 삭제 가능
+    if (user.uid !== authorId && !isAdmin) {
+      alert("자신이 작성한 기록만 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("정말 이 기록을 삭제하시겠습니까?")) return;
+    
+    try {
+      await deleteDoc(doc(db, 'records', recordId));
+    } catch (error) {
+      console.error("Error deleting record: ", error);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
+
   const handleRoleChange = async (userId, newRole) => {
     try {
       const userRef = doc(db, 'users', userId);
@@ -176,9 +192,20 @@ function Dashboard({ user, role }) {
               <h2 style={{ marginBottom: '1.5rem' }}>지난날 기록</h2>
               {records.map(record => (
                 <div key={record.id} className="record-item">
-                  <div className="record-meta">
-                    <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>{record.author}</span>
-                    <span>{record.createdAt?.toDate().toLocaleString()}</span>
+                  <div className="record-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                      <span style={{ fontWeight: '600', color: 'var(--text-main)', marginRight: '10px' }}>{record.author}</span>
+                      <span>{record.createdAt?.toDate().toLocaleString()}</span>
+                    </div>
+                    {(user.uid === record.authorId || isAdmin) && (
+                      <button 
+                        onClick={() => handleDeleteRecord(record.id, record.authorId)}
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1rem', padding: '0 5px' }}
+                        title="삭제"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                   <div className="record-content">
                     {record.text}
