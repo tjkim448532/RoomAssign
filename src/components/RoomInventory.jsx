@@ -109,7 +109,10 @@ function RoomInventory({ isAdmin }) {
         await batch.commit();
         if (!silent) alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
       } else {
-        if (!silent) alert('배정할 내역이 없거나 가능한 빈 방이 없습니다.');
+        if (!silent) {
+          const logText = logs && logs.length > 0 ? `\n\n[엔진 로그]\n${logs.join('\n')}` : '';
+          alert(`배정할 내역이 없거나 조건에 맞는 빈 방이 부족합니다.${logText}`);
+        }
       }
     } catch (error) {
       console.error('Error in auto assignment:', error);
