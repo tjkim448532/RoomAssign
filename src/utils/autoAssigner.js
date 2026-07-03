@@ -139,9 +139,32 @@ export async function runAutoAssignment(reservations, currentRooms) {
     });
 
     const selectedRoom = candidateRooms[0];
-    if (selectedRoom.matchScore > 0) {
-      logs.push(`  └ ✨ AI 특징 매칭: 고객 메모 분석을 통해 가장 알맞은 특성(${selectedRoom.features?.join(', ') || selectedRoom.bedType})을 가진 ${selectedRoom.roomNumber}호 배정`);
+    // Build AI reason string
+    let aiReason = '';
+    if (prefs.forcedBuilding) {
+      aiReason = `동 ${prefs.forcedBuilding} 강제 지정`;
+    } else if (prefs.forcedRoom) {
+      aiReason = `호 ${prefs.forcedRoom} 강제 지정`;
+    } else if (res.groupName) {
+      aiReason = `그룹 ${res.groupName} 동일동 배정`;
+    } else if (selectedRoom.matchScore > 0) {
+      const featureList = selectedRoom.features?.join(', ') || selectedRoom.bedType;
+      aiReason = `특징 매칭 (${featureList})`;
+    } else {
+      aiReason = '일반 배정';
     }
+    if (selectedRoom.matchScore > 0) {
+      logs.push(`  └ ✨ AI 특징 매칭: ${aiReason} - ${selectedRoom.roomNumber}호`);
+    } else {
+      logs.push(`  └ ✨ AI 배정: ${aiReason} - ${selectedRoom.roomNumber}호`);
+    }
+
+    // Detect special tags
+    const tags = [];
+    const noteLower = (res.notes || '').toLowerCase();
+    if (noteLower.includes('vip')) tags.push('VIP');
+    if (noteLower.includes('complaint') || noteLower.includes('주의')) tags.push('주의');
+    if (noteLower.match(/(\d{1,2}:\d{2})|early|얼리|14시|13시|12시/)) tags.push('청소긴급');
 
     if (res.groupName && !groupBuildingMap[res.groupName]) {
       groupBuildingMap[res.groupName] = selectedRoom.building;
@@ -150,13 +173,15 @@ export async function runAutoAssignment(reservations, currentRooms) {
     // 4. 배정 확정 및 51평 연동 처리
     if (effectiveRoomType === '51P') {
       const adjacentRoom = availableRooms.find(r => r.roomNumber === selectedRoom.adjacent);
-      assignments.push({
-        reservationId: res.reservationId,
-        customerName: res.customerName,
-        assignedRooms: [selectedRoom.id, adjacentRoom.id],
-        type: '51P'
-      });
-      logs.push(`  ✅ [배정 성공] 51평형(락오프): ${selectedRoom.roomNumber}호 + ${adjacentRoom.roomNumber}호 통합 배정 완료`);
+        assignments.push({
+          reservationId: res.reservationId,
+          customerName: res.customerName,
+          assignedRooms: [selectedRoom.id, adjacentRoom.id],
+          type: '51P',
+          aiReason: aiReason,
+          tags: tags
+        });
+        logs.push(`  ✅ [배정 성공] 51평형(락오프): ${selectedRoom.roomNumber}호 + ${adjacentRoom.roomNumber}호 통합 배정 완료 – ${aiReason}`);
       
       // 인벤토리에서 제외
       availableRooms.splice(availableRooms.findIndex(r => r.id === selectedRoom.id), 1);
@@ -166,9 +191,11 @@ export async function runAutoAssignment(reservations, currentRooms) {
         reservationId: res.reservationId,
         customerName: res.customerName,
         assignedRooms: [selectedRoom.id],
-        type: effectiveRoomType
+        type: effectiveRoomType,
+        aiReason: aiReason,
+        tags: tags
       });
-      logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료`);
+      logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료 – ${aiReason}`);
       
       // 인벤토리에서 제외
       availableRooms.splice(availableRooms.findIndex(r => r.id === selectedRoom.id), 1);

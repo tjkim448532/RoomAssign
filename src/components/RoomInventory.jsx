@@ -11,10 +11,12 @@ import CustomRulesModal from './CustomRulesModal';
 function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('101');
+  const [activeTab, setActiveTab] = useState('All'); // default to All view
   const [isInitializing, setIsInitializing] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [highlightGroup, setHighlightGroup] = useState('');
+  const groupOptions = Array.from(new Set(rooms.map(r => r.groupName).filter(Boolean)));
+
   const [notesInput, setNotesInput] = useState('');
   const [featuresInput, setFeaturesInput] = useState([]);
 
@@ -97,10 +99,12 @@ function RoomInventory({ isAdmin }) {
             const roomRef = doc(db, 'rooms', roomId);
             batch.update(roomRef, {
               status: 'assigned',
-              notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`
+              notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`,
+              aiReason: assignment.aiReason || '',
+              tags: assignment.tags || [],
+              groupName: assignment.groupName || null
             });
           });
-          // 예약 원장에 배정된 객실 번호 업데이트
           if (assignment.reservationId) {
             const resRef = doc(db, 'reservations', String(assignment.reservationId));
             batch.update(resRef, {
@@ -145,8 +149,18 @@ function RoomInventory({ isAdmin }) {
 
   const handleUpdateStatus = async (status, as51P = false) => {
     if (!selectedRoom) return;
-    
+
     let finalNotes = notesInput;
+
+    // Conflict warning: check floor preference in notes vs room floor
+    const noteLower = (selectedRoom.notes || '').toLowerCase();
+    const wantsHigh = noteLower.includes('고층') || noteLower.includes('높은층');
+    const wantsLow = noteLower.includes('저층') || noteLower.includes('낮은층') || noteLower.includes('1층');
+    const roomFloor = parseInt(selectedRoom.roomNumber.charAt(0), 10);
+    if ((wantsHigh && roomFloor < 3) || (wantsLow && roomFloor > 2)) {
+      const confirm = window.confirm('고객 메모에 층수 선호가 있지만 선택한 객실이 조건에 맞지 않습니다. 계속 진행하시겠습니까?');
+      if (!confirm) return;
+    }
 
     if (status === 'blocked' && selectedRoom.status === 'assigned') {
       const confirmKick = window.confirm(`현재 이 방에 배정된 고객이 있습니다.\n\n이 고객의 방 배정을 취소하고 다른 방으로 자동 재배정 받도록 대기열로 돌려보내시겠습니까?\n\n[확인] 배정 취소 후 객실 차단\n[취소] 고객은 그대로 두고 객실만 차단`);
@@ -166,13 +180,15 @@ function RoomInventory({ isAdmin }) {
     try {
       const batch = writeBatch(db);
       const roomRef = doc(db, 'rooms', selectedRoom.id);
-      
-      batch.update(roomRef, { 
-        status, 
-        notes: finalNotes
-      });
+      const updateData = {
+        status,
+        notes: finalNotes,
+        aiReason: selectedRoom.aiReason || '',
+        tags: selectedRoom.tags || [],
+        groupName: selectedRoom.groupName || null
+      };
+      batch.update(roomRef, updateData);
 
-      // Handle Lock-off coupling if Assigning as 51P
       if (as51P && selectedRoom.adjacent) {
         const adjacentId = `${selectedRoom.building}-${selectedRoom.adjacent}`;
         const adjacentRef = doc(db, 'rooms', adjacentId);
@@ -228,9 +244,9 @@ function RoomInventory({ isAdmin }) {
     XLSX.writeFile(wb, `객실배정현황_${today}.xlsx`);
   };
 
-  const filteredRooms = rooms.filter(r => r.building === activeTab).sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
+  const filteredRooms = activeTab === 'All' ? rooms.slice() : rooms.filter(r => r.building === activeTab);
+  const sortedFilteredRooms = filteredRooms.sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
   
-  // Calculate Stats
   const stats = useMemo(() => {
     let available16P = 0;
     let available35P = 0;
@@ -239,17 +255,16 @@ function RoomInventory({ isAdmin }) {
     
     const processedPairs = new Set();
 
-    rooms.filter(r => r.building === activeTab).forEach(room => {
+    rooms.filter(r => activeTab === 'All' || r.building === activeTab).forEach(room => {
       if (room.status === 'available') {
         if (room.size === '16P') available16P++;
         if (room.size === '35P') available35P++;
         if (room.size === '51P' && !room.isConnecting) availableDisabled51P++;
         
-        // Check unbroken connecting set
         if (room.isConnecting && room.adjacent) {
-          const adjacentRoom = rooms.find(r => r.building === activeTab && r.roomNumber === room.adjacent);
+          const adjacentRoom = rooms.find(r => r.building === room.building && r.roomNumber === room.adjacent);
           if (adjacentRoom && adjacentRoom.status === 'available') {
-            const pairKey = [room.roomNumber, adjacentRoom.roomNumber].sort().join('-');
+            const pairKey = [room.building, room.roomNumber, adjacentRoom.roomNumber].sort().join('-');
             if (!processedPairs.has(pairKey)) {
               unbroken51PSets++;
               processedPairs.add(pairKey);
@@ -291,19 +306,16 @@ function RoomInventory({ isAdmin }) {
 
   const handleGroupSelected = () => {
     if (selectedForGroup.length < 2) return;
-    
-    // 선택된 예약건 찾기
     const selectedRes = previewData.reservations.filter(r => selectedForGroup.includes(r.reservationId));
     if (selectedRes.length === 0) return;
     
-    // 대표자 이름 및 텍스트 생성
     let repName = selectedRes[0].groupName || selectedRes[0].agencyName;
     if (!repName) {
       const extracted = selectedRes[0].customerName?.replace(/\(.*?\)/g, '').trim();
       repName = extracted || selectedRes[0].customerName;
     }
     const inputGroupName = window.prompt("지정할 단체명(일행명)을 입력하세요:", repName);
-    if (inputGroupName === null) return; // 취소
+    if (inputGroupName === null) return; 
     const finalGroupName = inputGroupName.trim() || repName;
     const groupText = `[일행: ${finalGroupName} 외 ${selectedRes.length - 1}명]`;
     
@@ -312,7 +324,6 @@ function RoomInventory({ isAdmin }) {
       reservations: prev.reservations.map(r => {
         if (selectedForGroup.includes(r.reservationId)) {
           const currentNotes = r.notes || '';
-          // 이미 일행 태그가 있다면 중복 방지
           const newNotes = currentNotes.includes(groupText) ? currentNotes : (currentNotes ? `${currentNotes} ${groupText}` : groupText);
           return { ...r, notes: newNotes, groupName: finalGroupName };
         }
@@ -333,14 +344,9 @@ function RoomInventory({ isAdmin }) {
       <div className="inventory-header">
         <h1 className="header-title" style={{ fontSize: '18px', margin: 0 }}>📊 객실 현황판</h1>
         
-        {/* Action Toolbar */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {(rooms.length === 0 || isAdmin) && (
-            <button 
-              onClick={initializeRooms} 
-              disabled={isInitializing}
-              className="btn btn-primary"
-            >
+            <button onClick={initializeRooms} disabled={isInitializing} className="btn btn-primary">
               {isInitializing ? '⏳ 초기화 중...' : '1. 객실 초기화'}
             </button>
           )}
@@ -423,47 +429,27 @@ function RoomInventory({ isAdmin }) {
             </button>
           </div>
 
-          <button 
-            className="btn" 
-            onClick={() => setIsRulesModalOpen(true)}
-          >
-            3. 특별 규칙
-          </button>
+          <button className="btn" onClick={() => setIsRulesModalOpen(true)}>3. 특별 규칙</button>
 
           {isAdmin && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-hover)', padding: '4px 8px', borderRadius: '4px', height: '27px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-bright)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={isAutoAssignEnabled} 
-                    onChange={toggleAutoAssign} 
-                    style={{ margin: 0 }}
-                  />
+                  <input type="checkbox" checked={isAutoAssignEnabled} onChange={toggleAutoAssign} style={{ margin: 0 }}/>
                   자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
                 </label>
               </div>
 
-              <button 
-                onClick={() => handleAutoAssign(false)} 
-                disabled={isAssigning}
-                className="btn btn-gradient"
-              >
+              <button onClick={() => handleAutoAssign(false)} disabled={isAssigning} className="btn btn-gradient">
                 4. {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정'}
               </button>
 
-              <button 
-                onClick={exportToExcel}
-                className="btn"
-              >
-                5. 엑셀 다운로드
-              </button>
+              <button onClick={exportToExcel} className="btn">5. 엑셀 다운로드</button>
             </>
           )}
         </div>
       </div>
 
-      {/* Stats Ribbon */}
       <div className="stats-board">
         <div className="stat-item">
           <span className="stat-label">잔여 16평형:</span>
@@ -483,8 +469,8 @@ function RoomInventory({ isAdmin }) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tabs-container">
+        <button onClick={() => setActiveTab('All')} className={`tab-btn ${activeTab === 'All' ? 'active' : ''}`}>전체</button>
         {['101', '102', '103', '104', '105'].map(building => (
           <button
             key={building}
@@ -496,11 +482,21 @@ function RoomInventory({ isAdmin }) {
         ))}
       </div>
 
-      {/* Grid */}
+      {groupOptions.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <label className="input-label">그룹 강조:</label>
+          <select value={highlightGroup} onChange={e => setHighlightGroup(e.target.value)} style={{ marginLeft: '0.5rem' }}>
+            <option value="">전체</option>
+            {groupOptions.map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="room-grid-wrapper">
         <div className="room-grid">
-          {filteredRooms.map(room => (
-            <div 
+          {sortedFilteredRooms.map(room => (
+            <div
               key={room.id}
               onClick={() => {
                 setSelectedRoom(room);
@@ -508,8 +504,23 @@ function RoomInventory({ isAdmin }) {
                 setFeaturesInput(room.features || []);
               }}
               className={`room-card ${room.status}`}
+              style={highlightGroup && room.groupName === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
             >
-              <div className="room-number">{room.roomNumber}</div>
+              <div className="room-number">
+                 {room.roomNumber}
+                 {room.aiReason && (
+                   <span className="tooltip-icon" title={room.aiReason}>✨</span>
+                 )}
+                 {room.tags && room.tags.includes('VIP') && (
+                   <span className="tooltip-icon" title="VIP 고객">👑</span>
+                 )}
+                 {room.tags && room.tags.includes('주의') && (
+                   <span className="tooltip-icon" title="주의 고객">🚨</span>
+                 )}
+                 {room.tags && room.tags.includes('청소긴급') && (
+                   <span className="tooltip-icon" title="청소 긴급">🧹</span>
+                 )}
+               </div>
               <div className="room-info">{room.size} ({room.bedType})</div>
               
               {room.isConnecting && (
