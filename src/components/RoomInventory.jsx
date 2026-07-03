@@ -538,10 +538,10 @@ function RoomInventory({ isAdmin }) {
         <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
           <div className="modal-content" style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 className="modal-title" style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>
-              📋 마리아DB 데이터 동기화 미리보기
+              📋 PMS 예약 데이터 동기화 미리보기
             </h3>
-            <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
-              MariaDB에서 읽어온 오늘 체크인 대상자 명단입니다. 직원용 비교 대조를 위해 창이 고정 유지되며 직접 메모를 수정할 수 있습니다.
+            <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5', color: '#fbbf24' }}>
+              ⚠️ 본 리스트는 <strong>오늘 아침 기준의 PMS 예약 데이터</strong>입니다. 실시간 연동이 아니므로 오늘 아침 이후에 추가된 당일 예약 등은 누락되어 있을 수 있습니다. 직원용 비교 대조를 위해 창이 고정 유지됩니다.
             </p>
 
             {/* Subtotal Area */}
