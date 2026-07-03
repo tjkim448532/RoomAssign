@@ -277,7 +277,8 @@ function RoomInventory({ isAdmin }) {
               type="date" 
               value={targetDate} 
               onChange={(e) => setTargetDate(e.target.value)} 
-              style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 1rem', outline: 'none' }}
+              onKeyDown={(e) => e.preventDefault()} 
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 1rem', outline: 'none', cursor: 'pointer' }}
             />
 
             <button 
@@ -318,9 +319,9 @@ function RoomInventory({ isAdmin }) {
               }}
               disabled={isSettingDB}
             >
-              {isSettingDB ? '⏳ 동기화 중...' : '🔄 마리아DB 최신 데이터 동기화'}
+              {isSettingDB ? '⏳ 데이터 불러오는 중...' : `🔄 ${targetDate} 예약리스트 불러오기`}
             </button>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>MariaDB 요약 테이블을 읽어와 파이어베이스 현황판에 실시간 반영합니다.</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>선택하신 날짜의 요약 테이블을 읽어와 화면에 반영합니다.</span>
           </div>
 
           <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
