@@ -372,7 +372,32 @@ function RoomInventory({ isAdmin }) {
                   
                   const json = await res.json();
                   if (res.ok && json.success) {
-                    setPreviewData({ reservations: json.data.reservations, rooms: json.data.rooms });
+                    const groupInfoMap = {};
+                    json.data.reservations.forEach(r => {
+                      if (r.notes) {
+                        const groupMatch = r.notes.match(/단\s*체\s*명\s*:\s*(.+)/);
+                        if (groupMatch) {
+                          groupInfoMap[r.customerName] = {
+                            groupName: groupMatch[1].trim(),
+                            commonNotes: r.notes
+                          };
+                        }
+                      }
+                    });
+
+                    const enrichedReservations = json.data.reservations.map(r => {
+                      const info = groupInfoMap[r.customerName];
+                      if (info && !r.groupName) {
+                        return {
+                          ...r,
+                          groupName: info.groupName,
+                          notes: r.notes ? r.notes : info.commonNotes
+                        };
+                      }
+                      return r;
+                    });
+
+                    setPreviewData({ reservations: enrichedReservations, rooms: json.data.rooms });
                   } else {
                     throw new Error(`MariaDB 연동 실패: ${json.message || 'API 오류'}`);
                   }
