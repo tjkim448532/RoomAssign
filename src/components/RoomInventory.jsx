@@ -141,13 +141,30 @@ function RoomInventory({ isAdmin }) {
   const handleUpdateStatus = async (status, as51P = false) => {
     if (!selectedRoom) return;
     
+    let finalNotes = notesInput;
+
+    if (status === 'blocked' && selectedRoom.status === 'assigned') {
+      const confirmKick = window.confirm(`현재 이 방에 배정된 고객이 있습니다.\n\n이 고객의 방 배정을 취소하고 다른 방으로 자동 재배정 받도록 대기열로 돌려보내시겠습니까?\n\n[확인] 배정 취소 후 객실 차단\n[취소] 고객은 그대로 두고 객실만 차단`);
+      if (confirmKick) {
+        finalNotes = '차단됨 (점검/수리)';
+        setNotesInput(finalNotes);
+      } else {
+        finalNotes = notesInput || selectedRoom.notes;
+      }
+    } else if (status === 'available') {
+      finalNotes = '';
+      setNotesInput('');
+    } else {
+      finalNotes = notesInput || selectedRoom.notes;
+    }
+    
     try {
       const batch = writeBatch(db);
       const roomRef = doc(db, 'rooms', selectedRoom.id);
       
       batch.update(roomRef, { 
         status, 
-        notes: notesInput || (status === 'available' ? '' : selectedRoom.notes)
+        notes: finalNotes
       });
 
       // Handle Lock-off coupling if Assigning as 51P
@@ -501,7 +518,7 @@ function RoomInventory({ isAdmin }) {
             
             <div>
               <button onClick={() => handleUpdateStatus('available')} className="modal-btn available">
-                ✅ 빈 방으로 전환 (예약 취소)
+                ✅ 빈 방으로 전환 (기존 고객 배정 취소)
               </button>
               
               <button onClick={() => handleUpdateStatus('assigned', false)} className="modal-btn assigned">
