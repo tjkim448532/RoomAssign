@@ -297,7 +297,11 @@ function RoomInventory({ isAdmin }) {
     if (selectedRes.length === 0) return;
     
     // 대표자 이름 및 텍스트 생성
-    const repName = selectedRes[0].customerName;
+    let repName = selectedRes[0].groupName || selectedRes[0].agencyName;
+    if (!repName) {
+      const match = selectedRes[0].customerName?.match(/\((.*?)\)/);
+      repName = match ? match[1].trim() : selectedRes[0].customerName;
+    }
     const groupText = `[일행: ${repName} 외 ${selectedRes.length - 1}명]`;
     
     setPreviewData(prev => ({
@@ -645,7 +649,7 @@ function RoomInventory({ isAdmin }) {
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
                         <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
-                        {res.customerName}
+                        {res.groupName || res.agencyName ? `${res.groupName || res.agencyName}` : (res.customerName?.match(/\((.*?)\)/) ? res.customerName.match(/\((.*?)\)/)[1].trim() : res.customerName)}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <select 
