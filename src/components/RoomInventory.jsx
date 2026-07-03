@@ -652,7 +652,14 @@ function RoomInventory({ isAdmin }) {
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
                         <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
-                        {res.groupName || res.agencyName ? `${res.groupName || res.agencyName}` : (res.customerName?.includes('(') && res.customerName.replace(/\(.*?\)/g, '').trim() ? res.customerName.replace(/\(.*?\)/g, '').trim() : res.customerName)}
+                        {res.groupName || res.agencyName ? (
+                          <>
+                            <span style={{ color: '#F87171' }}>{res.groupName || res.agencyName}</span>
+                            <span style={{ fontSize: '0.8rem', color: '#9CA3AF', marginLeft: '6px', fontWeight: 'normal' }}>({res.customerName})</span>
+                          </>
+                        ) : (
+                          (res.customerName?.includes('(') && res.customerName.replace(/\(.*?\)/g, '').trim() ? res.customerName.replace(/\(.*?\)/g, '').trim() : res.customerName)
+                        )}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <select 
@@ -677,16 +684,21 @@ function RoomInventory({ isAdmin }) {
                         </select>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                          {res.marketChannel && (
+                            <span style={{ display: 'inline-block', color: '#60A5FA', background: 'rgba(96,165,250,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              {res.marketChannel}
+                            </span>
+                          )}
                           {Boolean(res.is_member) || res.is_member === 1 ? (
-                            <span style={{ display: 'inline-block', marginRight: '6px', color: '#FCD34D', fontWeight: 'bold' }}>👑 회원</span>
+                            <span style={{ display: 'inline-block', color: '#FCD34D', fontWeight: 'bold', fontSize: '0.8rem', padding: '2px 0' }}>👑 회원</span>
                           ) : (
-                            <span style={{ display: 'inline-block', marginRight: '6px', color: '#9CA3AF' }}>👤 비회원</span>
+                            <span style={{ display: 'inline-block', color: '#9CA3AF', fontSize: '0.8rem', padding: '2px 0' }}>👤 비회원</span>
                           )}
                           {Boolean(res.has_golf) || res.has_golf === 1 ? (
-                            <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold' }}>⛳ 골프예약</span>
+                            <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold', fontSize: '0.8rem', padding: '2px 0' }}>⛳ 골프</span>
                           ) : (
-                            <span style={{ display: 'inline-block', color: '#9CA3AF' }}>-</span>
+                            <span style={{ display: 'inline-block', color: '#9CA3AF', fontSize: '0.8rem', padding: '2px 0' }}>-</span>
                           )}
                         </div>
                         {(() => {
@@ -716,12 +728,11 @@ function RoomInventory({ isAdmin }) {
                         })()}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.9rem', color: '#E5E7EB' }}>
-                        <input 
-                          type="text" 
+                        <textarea 
                           value={res.notes || ''} 
                           onChange={e => handlePreviewNoteChange(res.reservationId, e.target.value)}
-                          placeholder="메모 추가..."
-                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '6px 8px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
+                          placeholder="메모..."
+                          style={{ width: '100%', minHeight: '60px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#E5E7EB', padding: '6px 8px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s', resize: 'vertical', fontSize: '0.8rem', lineHeight: '1.4' }}
                           onFocus={e => e.target.style.border = '1px solid #6366f1'}
                           onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
                         />
