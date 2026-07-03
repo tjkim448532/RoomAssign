@@ -7,7 +7,28 @@
 export async function runAutoAssignment(reservations, currentRooms) {
   const assignments = [];
   const logs = [];
-  const availableRooms = JSON.parse(JSON.stringify(currentRooms)).filter(r => r.status === 'available' || r.status === 'checkout');
+  
+  // 0-1. 이미 배정된(연박 중 등) 객실 번호 수집하여 보호
+  const alreadyAssignedRoomNumbers = [];
+  reservations.forEach(res => {
+    if (res.assignedRoom) {
+      alreadyAssignedRoomNumbers.push(res.assignedRoom);
+      // 51평형일 경우 인접 객실(adjacent)도 함께 사용 중이므로 보호 처리
+      if (res.roomType === '51평' || res.roomType === '51P') {
+        const roomNode = currentRooms.find(r => r.roomNumber === res.assignedRoom);
+        if (roomNode && roomNode.adjacent) {
+          alreadyAssignedRoomNumbers.push(roomNode.adjacent);
+        }
+      }
+    }
+  });
+
+  // 0-2. 상태가 available/checkout 인 방 중에서 연박/기배정 방은 풀에서 제외
+  let availableRooms = JSON.parse(JSON.stringify(currentRooms)).filter(r => r.status === 'available' || r.status === 'checkout');
+  if (alreadyAssignedRoomNumbers.length > 0) {
+    logs.push(`[시스템] 연박/기배정으로 인해 보호되는 객실: ${[...new Set(alreadyAssignedRoomNumbers)].join(', ')}호`);
+    availableRooms = availableRooms.filter(r => !alreadyAssignedRoomNumbers.includes(r.roomNumber));
+  }
 
   logs.push(`자동 배정 엔진 시작: 총 ${reservations.length}건의 예약을 처리합니다.`);
   
