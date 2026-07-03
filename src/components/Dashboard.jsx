@@ -131,44 +131,44 @@ function Dashboard({ user, role }) {
   };
 
   return (
-    <div className="container animate-fade-in">
-      <header className="header">
-        <h1 style={{ fontWeight: '700', letterSpacing: '-0.5px' }}>자동 객실 배정 시스템</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span className={`badge ${isAdmin ? 'badge-admin' : 'badge-user'}`}>
-            {isAdmin ? 'Admin' : 'User'}
-          </span>
-          <span>{user.displayName}</span>
-          <button className="btn btn-danger" onClick={handleLogout} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+    <div className="container">
+      <aside className="app-sidebar">
+        <div className="sidebar-header">
+          🏨 객실 배정 시스템
+        </div>
+        <div className="sidebar-menu">
+          <div 
+            className={`sidebar-item ${currentTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('inventory')}
+          >
+            📊 객실 현황판
+          </div>
+          <div 
+            className={`sidebar-item ${currentTab === 'records' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('records')}
+          >
+            📝 업무 일지 및 관리
+          </div>
+        </div>
+        <div className="sidebar-header" style={{ borderTop: '1px solid var(--border-color)', borderBottom: 'none', justifyContent: 'space-between', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+          <div>
+            <span style={{ fontSize: '11px', color: isAdmin ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold' }}>[{isAdmin ? 'Admin' : 'User'}] </span>
+            {user.displayName}
+          </div>
+          <button className="btn" onClick={handleLogout} style={{ width: '100%', textAlign: 'center' }}>
             로그아웃
           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-        <button 
-          onClick={() => setCurrentTab('inventory')}
-          style={{ padding: '0.5rem 1rem', background: currentTab === 'inventory' ? 'var(--primary-color)' : 'transparent', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          객실 현황판
-        </button>
-        <button 
-          onClick={() => setCurrentTab('records')}
-          style={{ padding: '0.5rem 1rem', background: currentTab === 'records' ? 'var(--primary-color)' : 'transparent', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          업무 일지 및 관리
-        </button>
-      </div>
-
-      {currentTab === 'inventory' && (
-        <div className="glass-card">
+      <main className="main-content">
+        {currentTab === 'inventory' && (
           <RoomInventory isAdmin={isAdmin} />
-        </div>
-      )}
+        )}
 
-      {currentTab === 'records' && (
-        <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '2fr 1fr' : '1fr', gap: '2rem' }}>
+        {currentTab === 'records' && (
+          <div style={{ padding: '20px', overflowY: 'auto', height: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '2fr 1fr' : '1fr', gap: '20px' }}>
           
           {/* Records Section */}
           <section>
@@ -326,8 +326,10 @@ function Dashboard({ user, role }) {
               </div>
             </section>
           )}
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

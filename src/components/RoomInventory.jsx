@@ -322,48 +322,34 @@ function RoomInventory({ isAdmin }) {
   }
 
   return (
-    <div className="inventory-container relative">
-      <div className="inventory-header animate-float-up">
-        <h1 className="header-title">스마트 객실 배정 현황판</h1>
+    <div className="inventory-container">
+      <div className="inventory-header">
+        <h1 className="header-title" style={{ fontSize: '18px', margin: 0 }}>📊 객실 현황판</h1>
         
-        {/* Flowchart Layout */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '1.5rem 0', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-          <h3 style={{ color: 'var(--text-main)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '600' }}>📌 배정 진행 순서</h3>
-
+        {/* Action Toolbar */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {(rooms.length === 0 || isAdmin) && (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>1</div>
-                <button 
-                  onClick={initializeRooms} 
-                  disabled={isInitializing}
-                  className="btn btn-primary"
-                  style={{ width: '220px', justifyContent: 'center' }}
-                >
-                  {isInitializing ? '초기화 중...' : '객실 데이터 초기화'}
-                </button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>기존 배정 내역을 모두 리셋하고 빈 객실 상태로 되돌립니다.</span>
-              </div>
-              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
-            </>
+            <button 
+              onClick={initializeRooms} 
+              disabled={isInitializing}
+              className="btn btn-primary"
+            >
+              {isInitializing ? '⏳ 초기화 중...' : '1. 객실 초기화'}
+            </button>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '2' : '1'}</div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '220px' }}>
-              <input 
-                type="date" 
-                value={targetDate} 
-                onChange={(e) => setTargetDate(e.target.value)} 
-                onKeyDown={(e) => e.preventDefault()}
-                onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', outline: 'none', cursor: 'pointer', width: '100%', colorScheme: 'dark' }}
-              />
-
-              <button 
-                className="btn" 
-                style={{ width: '100%', justifyContent: 'center', border: '1px solid #34D399', color: '#34D399' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input 
+              type="date" 
+              value={targetDate} 
+              onChange={(e) => setTargetDate(e.target.value)} 
+              onKeyDown={(e) => e.preventDefault()}
+              onClick={(e) => e.target.showPicker && e.target.showPicker()}
+              className="input-field"
+              style={{ width: '130px', padding: '4px 8px', height: '27px' }}
+            />
+            <button 
+              className="btn btn-primary" 
               onClick={async () => {
                 if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
                 setIsSettingDB(true);
@@ -374,23 +360,15 @@ function RoomInventory({ isAdmin }) {
                   if (!contentType || !contentType.includes('application/json')) {
                     const text = await res.text();
                     console.error("Backend API 비정상 응답 (HTML 등):", text);
-                    throw new Error(`API 응답이 올바르지 않습니다. 백엔드 서버 상태를 확인해주세요. (응답: ${text.substring(0, 100)}...)`);
+                    throw new Error(`API 응답이 올바르지 않습니다. 백엔드 서버 상태를 확인해주세요.`);
                   }
                   
                   const json = await res.json();
-                  
-                  let reservationsData = [];
-                  let roomsData = [];
-
                   if (res.ok && json.success) {
-                    reservationsData = json.data.reservations;
-                    roomsData = json.data.rooms;
+                    setPreviewData({ reservations: json.data.reservations, rooms: json.data.rooms });
                   } else {
                     throw new Error(`MariaDB 연동 실패: ${json.message || 'API 오류'}`);
                   }
-                  
-                  // 바로 DB에 밀어넣지 않고, 사용자가 확인할 수 있도록 미리보기 상태에 저장합니다.
-                  setPreviewData({ reservations: reservationsData, rooms: roomsData });
                 } catch (e) {
                   console.error(e);
                   alert("동기화 중 오류가 발생했습니다: " + e.message);
@@ -399,98 +377,67 @@ function RoomInventory({ isAdmin }) {
               }}
               disabled={isSettingDB}
             >
-              {isSettingDB ? '⏳ 데이터 불러오는 중...' : (() => {
-                const todayStr = new Date().toISOString().split('T')[0];
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
-                
-                if (targetDate === yesterdayStr) return '🔄 어제날짜 예약 리스트';
-                if (targetDate === todayStr) return '🔄 오늘날짜 예약 리스트';
-                return `🔄 ${targetDate} 예약 리스트`;
-              })()}
+              2. {isSettingDB ? '⏳ 데이터 불러오는 중...' : '예약 동기화'}
             </button>
-            </div>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>선택하신 날짜의 요약 테이블을 읽어와 화면에 반영합니다.</span>
           </div>
 
-          <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{(rooms.length === 0 || isAdmin) ? '3' : '2'}</div>
-            <button 
-              className="btn" 
-              style={{ width: '220px', justifyContent: 'center', border: '1px solid var(--accent-indigo)', color: 'var(--accent-indigo)' }}
-              onClick={() => setIsRulesModalOpen(true)}
-            >
-              ⚙️ 특별 배정 규칙
-            </button>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>"어린이는 1층"과 같이 스마트 배정 시스템에 강제 적용할 규칙을 설정합니다.</span>
-          </div>
+          <button 
+            className="btn" 
+            onClick={() => setIsRulesModalOpen(true)}
+          >
+            3. 특별 규칙
+          </button>
 
           {isAdmin && (
             <>
-              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>4</div>
-                <button 
-                  onClick={() => handleAutoAssign(false)} 
-                  disabled={isAssigning}
-                  className="btn btn-gradient"
-                  style={{ width: '220px', justifyContent: 'center' }}
-                >
-                  {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정 실행'}
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>고객 메모와 특별 규칙을 분석하여 최적의 객실을 배정합니다.</span>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'white', fontWeight: 'bold', marginLeft: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={isAutoAssignEnabled} 
-                      onChange={toggleAutoAssign} 
-                      style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
-                    />
-                    자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
-                  </label>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-hover)', padding: '4px 8px', borderRadius: '4px', height: '27px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-bright)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isAutoAssignEnabled} 
+                    onChange={toggleAutoAssign} 
+                    style={{ margin: 0 }}
+                  />
+                  자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
+                </label>
               </div>
 
-              <div style={{ width: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>↓</div>
+              <button 
+                onClick={() => handleAutoAssign(false)} 
+                disabled={isAssigning}
+                className="btn btn-gradient"
+              >
+                4. {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정'}
+              </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>5</div>
-                <button 
-                  onClick={exportToExcel}
-                  className="btn btn-primary"
-                  style={{ width: '220px', justifyContent: 'center' }}
-                >
-                  📊 결과 엑셀 다운로드
-                </button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>최종 확정된 객실 배정 결과를 엑셀 파일로 출력합니다.</span>
-              </div>
+              <button 
+                onClick={exportToExcel}
+                className="btn"
+              >
+                5. 엑셀 다운로드
+              </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Stats Board */}
+      {/* Stats Ribbon */}
       <div className="stats-board">
         <div className="stat-item">
-          <div className="stat-label">잔여 16평형</div>
-          <div className="stat-value text-emerald">{stats.available16P}</div>
+          <span className="stat-label">잔여 16평형:</span>
+          <span className="stat-value text-emerald">{stats.available16P}</span>
         </div>
         <div className="stat-item">
-          <div className="stat-label">잔여 35평형</div>
-          <div className="stat-value text-emerald">{stats.available35P}</div>
+          <span className="stat-label">잔여 35평형:</span>
+          <span className="stat-value text-emerald">{stats.available35P}</span>
         </div>
         <div className="stat-item">
-          <div className="stat-label">온전한 51평 세트 (예약가능)</div>
-          <div className="stat-value text-indigo">{stats.unbroken51PSets}</div>
+          <span className="stat-label">온전한 51평 세트:</span>
+          <span className="stat-value text-indigo">{stats.unbroken51PSets}</span>
         </div>
         <div className="stat-item">
-          <div className="stat-label">장애인 전용 51평형</div>
-          <div className="stat-value text-amber">{stats.availableDisabled51P}</div>
+          <span className="stat-label">장애인 전용 51평형:</span>
+          <span className="stat-value text-amber">{stats.availableDisabled51P}</span>
         </div>
       </div>
 
@@ -508,51 +455,45 @@ function RoomInventory({ isAdmin }) {
       </div>
 
       {/* Grid */}
-      <div className="room-grid">
-        {filteredRooms.map(room => (
-          <div 
-            key={room.id}
-            onClick={() => {
-              setSelectedRoom(room);
-              setNotesInput(room.notes || '');
-              setFeaturesInput(room.features || []);
-            }}
-            className={`room-card ${room.status}`}
-          >
-            <div className="room-number">{room.roomNumber}</div>
-            <div className="room-info">{room.size} ({room.bedType})</div>
-            
-            <div className="room-status-badge">
-              {room.status === 'available' ? '빈 방' :
-               room.status === 'assigned' ? '배정됨' : 
-               room.status === 'occupied' ? '연박중' :
-               room.status === 'checkout' ? '당일퇴실' :
-               room.status === 'ooo' ? '점검중' : '차단됨'}
+      <div className="room-grid-wrapper">
+        <div className="room-grid">
+          {filteredRooms.map(room => (
+            <div 
+              key={room.id}
+              onClick={() => {
+                setSelectedRoom(room);
+                setNotesInput(room.notes || '');
+                setFeaturesInput(room.features || []);
+              }}
+              className={`room-card ${room.status}`}
+            >
+              <div className="room-number">{room.roomNumber}</div>
+              <div className="room-info">{room.size} ({room.bedType})</div>
+              
+              {room.isConnecting && (
+                <div className="connecting-info">
+                  🔗 커넥팅 ({room.adjacent})
+                </div>
+              )}
+              
+              {room.features && room.features.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginTop: '4px' }}>
+                  {room.features.map(feat => (
+                    <span key={feat} style={{ background: '#454545', color: '#fff', padding: '2px 4px', borderRadius: '2px', fontSize: '10px' }}>
+                      {feat}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              {room.notes && (
+                <div className="room-notes" title={room.notes}>
+                  {room.notes}
+                </div>
+              )}
             </div>
-            
-            {room.isConnecting && (
-              <div className="connecting-info">
-                🔗 커넥팅 ({room.adjacent})
-              </div>
-            )}
-            
-            {room.features && room.features.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
-                {room.features.map(feat => (
-                  <span key={feat} style={{ background: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
-                    ✨ {feat}
-                  </span>
-                ))}
-              </div>
-            )}
-            
-            {room.notes && (
-              <div className="room-notes" title={room.notes}>
-                📝 {room.notes}
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       
       {/* Control Modal */}
