@@ -343,109 +343,129 @@ function RoomInventory({ isAdmin }) {
   return (
     <div className="inventory-container">
       <div className="inventory-header">
-        <h1 className="header-title" style={{ fontSize: '18px', margin: 0 }}>📊 객실 현황판</h1>
+        <div className="ai-avatar-container">
+          <img src="/receptionist.png" alt="AI Receptionist" className="ai-avatar" />
+          <div className="ai-speech-bubble">
+            <span style={{ fontSize: '15px', fontWeight: 'bold' }}>안녕하세요! 객실 배정을 도와드릴게요 ✨</span><br/>
+            <span style={{ fontSize: '12px', opacity: 0.8 }}>우측의 순서대로 버튼을 눌러주세요 ➔</span>
+          </div>
+        </div>
         
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="flowchart-actions">
           {(rooms.length === 0 || isAdmin) && (
-            <button onClick={initializeRooms} disabled={isInitializing} className="btn btn-primary">
-              {isInitializing ? '⏳ 초기화 중...' : '1. 객실 초기화'}
-            </button>
+            <div className="flow-step">
+              <button onClick={initializeRooms} disabled={isInitializing} className="btn btn-primary">
+                {isInitializing ? '⏳ 초기화 중...' : '1. 객실 초기화'}
+              </button>
+              <svg className="flow-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input 
-              type="date" 
-              value={targetDate} 
-              onChange={(e) => setTargetDate(e.target.value)} 
-              onKeyDown={(e) => e.preventDefault()}
-              onClick={(e) => e.target.showPicker && e.target.showPicker()}
-              className="input-field"
-              style={{ width: '130px', padding: '4px 8px', height: '27px' }}
-            />
-            <button 
-              className="btn btn-primary" 
-              onClick={async () => {
-                if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
-                setIsSettingDB(true);
-                try {
-                  const prevDate1 = new Date(new Date(targetDate).getTime() - 86400000).toISOString().split('T')[0];
-                  const prevDate2 = new Date(new Date(targetDate).getTime() - 86400000 * 2).toISOString().split('T')[0];
-                  
-                  const [resToday, resPrev1, resPrev2] = await Promise.all([
-                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`),
-                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate1}`),
-                    fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate2}`)
-                  ]);
-                  
-                  const [jsonToday, jsonPrev1, jsonPrev2] = await Promise.all([
-                    resToday.json(),
-                    resPrev1.json().catch(() => ({ success: false, data: { reservations: [] } })),
-                    resPrev2.json().catch(() => ({ success: false, data: { reservations: [] } }))
-                  ]);
+          <div className="flow-step">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input 
+                type="date" 
+                value={targetDate} 
+                onChange={(e) => setTargetDate(e.target.value)} 
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                className="input-field"
+                style={{ width: '130px', padding: '6px 12px', margin: 0 }}
+              />
+              <button 
+                className="btn btn-primary" 
+                onClick={async () => {
+                  if(!window.confirm(`${targetDate} 기준의 데이터를 가져와 동기화하시겠습니까?`)) return;
+                  setIsSettingDB(true);
+                  try {
+                    const prevDate1 = new Date(new Date(targetDate).getTime() - 86400000).toISOString().split('T')[0];
+                    const prevDate2 = new Date(new Date(targetDate).getTime() - 86400000 * 2).toISOString().split('T')[0];
+                    
+                    const [resToday, resPrev1, resPrev2] = await Promise.all([
+                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`),
+                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate1}`),
+                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate2}`)
+                    ]);
+                    
+                    const [jsonToday, jsonPrev1, jsonPrev2] = await Promise.all([
+                      resToday.json(),
+                      resPrev1.json().catch(() => ({ success: false, data: { reservations: [] } })),
+                      resPrev2.json().catch(() => ({ success: false, data: { reservations: [] } }))
+                    ]);
 
-                  if (resToday.ok && jsonToday.success) {
-                    const allReservations = [
-                      ...(jsonToday.data?.reservations || []),
-                      ...(jsonPrev1.data?.reservations || []),
-                      ...(jsonPrev2.data?.reservations || [])
-                    ];
-                    const groupInfoMap = {};
-                    allReservations.forEach(r => {
-                      if (r.notes) {
-                        const groupMatch = r.notes.match(/단\s*체\s*명\s*:\s*(.+)/);
-                        if (groupMatch) {
-                          groupInfoMap[r.customerName] = {
-                            groupName: groupMatch[1].trim(),
-                            commonNotes: r.notes
+                    if (resToday.ok && jsonToday.success) {
+                      const allReservations = [
+                        ...(jsonToday.data?.reservations || []),
+                        ...(jsonPrev1.data?.reservations || []),
+                        ...(jsonPrev2.data?.reservations || [])
+                      ];
+                      const groupInfoMap = {};
+                      allReservations.forEach(r => {
+                        if (r.notes) {
+                          const groupMatch = r.notes.match(/단\s*체\s*명\s*:\s*(.+)/);
+                          if (groupMatch) {
+                            groupInfoMap[r.customerName] = {
+                              groupName: groupMatch[1].trim(),
+                              commonNotes: r.notes
+                            };
+                          }
+                        }
+                      });
+
+                      const enrichedReservations = jsonToday.data.reservations.map(r => {
+                        const info = groupInfoMap[r.customerName];
+                        if (info && !r.groupName) {
+                          return {
+                            ...r,
+                            group_name: info.group_name || info.groupName,
+                            notes: r.notes ? r.notes : info.commonNotes
                           };
                         }
-                      }
-                    });
+                        return r;
+                      });
 
-                    const enrichedReservations = jsonToday.data.reservations.map(r => {
-                      const info = groupInfoMap[r.customerName];
-                      if (info && !r.groupName) {
-                        return {
-                          ...r,
-                          group_name: info.group_name || info.groupName,
-                          notes: r.notes ? r.notes : info.commonNotes
-                        };
-                      }
-                      return r;
-                    });
-
-                    setPreviewData({ reservations: enrichedReservations, rooms: jsonToday.data.rooms });
-                  } else {
-                    throw new Error(`MariaDB 연동 실패: API 오류`);
+                      setPreviewData({ reservations: enrichedReservations, rooms: jsonToday.data.rooms });
+                    } else {
+                      throw new Error(`MariaDB 연동 실패: API 오류`);
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert("동기화 중 오류가 발생했습니다: " + e.message);
                   }
-                } catch (e) {
-                  console.error(e);
-                  alert("동기화 중 오류가 발생했습니다: " + e.message);
-                }
-                setIsSettingDB(false);
-              }}
-              disabled={isSettingDB}
-            >
-              2. {isSettingDB ? '⏳ 데이터 불러오는 중...' : '예약 동기화'}
-            </button>
+                  setIsSettingDB(false);
+                }}
+                disabled={isSettingDB}
+              >
+                2. {isSettingDB ? '⏳ 불러오는 중...' : '예약 동기화'}
+              </button>
+            </div>
           </div>
 
-          <button className="btn" onClick={() => setIsRulesModalOpen(true)}>3. 특별 규칙</button>
+          <div className="flow-step">
+            <svg className="flow-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <button className="btn" onClick={() => setIsRulesModalOpen(true)}>3. 특별 규칙</button>
+          </div>
 
           {isAdmin && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-hover)', padding: '4px 8px', borderRadius: '4px', height: '27px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-bright)' }}>
-                  <input type="checkbox" checked={isAutoAssignEnabled} onChange={toggleAutoAssign} style={{ margin: 0 }}/>
-                  자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
-                </label>
+              <div className="flow-step">
+                <svg className="flow-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-bright)' }}>
+                    <input type="checkbox" checked={isAutoAssignEnabled} onChange={toggleAutoAssign} style={{ margin: 0 }}/>
+                    자동 배정 {isAutoAssignEnabled ? 'ON' : 'OFF'}
+                  </label>
+                </div>
+
+                <button onClick={() => handleAutoAssign(false)} disabled={isAssigning} className="btn btn-gradient" style={{ padding: '8px 20px', fontSize: '14px', fontWeight: 'bold' }}>
+                  4. {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정'}
+                </button>
               </div>
 
-              <button onClick={() => handleAutoAssign(false)} disabled={isAssigning} className="btn btn-gradient">
-                4. {isAssigning ? '✨ 배정 중...' : '✨ 스마트 배정'}
-              </button>
-
-              <button onClick={exportToExcel} className="btn">5. 엑셀 다운로드</button>
+              <div className="flow-step">
+                <svg className="flow-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <button onClick={exportToExcel} className="btn">5. 엑셀 다운로드</button>
+              </div>
             </>
           )}
         </div>
