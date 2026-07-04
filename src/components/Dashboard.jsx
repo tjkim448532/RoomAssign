@@ -172,7 +172,7 @@ function Dashboard({ user, role }) {
           
           {/* Records Section */}
           <section>
-            <div className="glass-card" style={{ marginBottom: '2rem' }}>
+            <div className="glass-panel" style={{ marginBottom: '2rem' }}>
               <h2 style={{ marginBottom: '1rem' }}>업무 일지 기록</h2>
               <form onSubmit={handleAddRecord} style={{ display: 'flex', gap: '1rem' }}>
                 <input
@@ -188,7 +188,7 @@ function Dashboard({ user, role }) {
               </form>
             </div>
 
-            <div className="glass-card">
+            <div className="glass-panel">
               <h2 style={{ marginBottom: '1.5rem' }}>지난날 기록</h2>
               {records.map(record => (
                 <div key={record.id} className="record-item">
@@ -219,7 +219,7 @@ function Dashboard({ user, role }) {
           {/* Admin Section */}
           {isAdmin && (
             <section style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div className="glass-card">
+              <div className="glass-panel">
                 <h2 style={{ marginBottom: '1.5rem' }}>사용자 권한 관리</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {users.map(u => (
@@ -249,7 +249,7 @@ function Dashboard({ user, role }) {
               </div>
 
               {/* AI Rule Management */}
-              <div className="glass-card">
+              <div className="glass-panel">
                 <h2 style={{ marginBottom: '1.5rem' }}>AI 특별 배정 규칙 관리</h2>
                 
                 <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
