@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, onSnapshot, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, writeBatch, onSnapshot, getDocs, query, where, updateDoc } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
 import { fetchTodayReservations } from '../services/vercelApi';
@@ -15,6 +15,7 @@ function RoomInventory({ isAdmin }) {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [highlightGroup, setHighlightGroup] = useState('');
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const groupOptions = Array.from(new Set(rooms.map(r => r.group_name || r.groupName).filter(Boolean)));
 
   const [notesInput, setNotesInput] = useState('');
