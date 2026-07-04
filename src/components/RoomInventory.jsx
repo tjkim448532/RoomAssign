@@ -652,7 +652,7 @@ function RoomInventory({ isAdmin }) {
             
             {/* AI Guide Panel */}
             <div style={{ 
-              width: '320px', 
+              width: '340px', 
               background: 'rgba(43, 34, 60, 0.85)', 
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
@@ -680,15 +680,38 @@ function RoomInventory({ isAdmin }) {
               }}>
                 <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', borderBottom: '10px solid var(--border-color)', borderLeft: '10px solid transparent', borderRight: '10px solid transparent' }}></div>
                 <p style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--primary-color)', marginBottom: '12px', textAlign: 'center' }}>데이터를 동기화할까요?</p>
-                <p style={{ marginBottom: '16px', color: 'var(--text-main)' }}>이 리스트는 오늘 아침 기준의 PMS 예약 데이터입니다.</p>
+                <p style={{ marginBottom: '16px', color: 'var(--text-main)', textAlign: 'center' }}>이 리스트는 오늘 아침 기준의 PMS 예약 데이터입니다.</p>
                 
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
-                  <p style={{ fontWeight: 'bold', color: '#c084fc', marginBottom: '6px' }}>💡 AI 배정 꿀팁</p>
-                  <p style={{ color: 'var(--text-main)', fontSize: '12.5px' }}>
-                    요청 메모란에 적어주신 내용을 AI가 꼼꼼히 분석해서 배정에 반영합니다!<br/><br/>
-                    가족이나 일행이 있다면, 메모에 <strong>"김씨가족"</strong>이라고 공통된 단어를 적어주시거나,<br/><br/>
-                    리스트 좌측 체크박스를 선택해 <strong>[일행으로 묶기]</strong>를 활용해 보세요. AI가 알아서 가까운 방으로 찰떡같이 배정해 드립니다! ✨
-                  </p>
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', borderLeft: '3px solid #c084fc', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto' }}>
+                  <p style={{ fontWeight: 'bold', color: '#c084fc', margin: 0, fontSize: '14px' }}>💡 100% 활용하는 AI 배정 꿀팁!</p>
+                  
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🧳 연박 자동 보호</p>
+                    <p style={{ color: 'var(--text-main)', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      <strong>연박 고객</strong>은 AI가 가장 최우선으로 배정하며, 며칠 머무르시는 동안 중간에 방이 바뀌지 않도록 똑똑하게 동일 객실을 찜해둡니다.
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🤝 가족 & 일행 찰떡 배정</p>
+                    <p style={{ color: 'var(--text-main)', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      일행이 있다면 메모란에 <strong>"김씨가족"</strong> 처럼 공통된 단어를 적어주시거나, 좌측 체크박스로 여러 명을 선택 후 <strong>[일행으로 묶기]</strong>를 눌러주세요. 옆방이나 가까운 층으로 알아서 붙여 드립니다!
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🗣️ 자연어 처리 지원</p>
+                    <p style={{ color: 'var(--text-main)', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      "조용한 고층 부탁드려요", "엘리베이터 가까운 곳" 처럼 <strong>평소 쓰시던 자연스러운 말투</strong>로 메모를 남기셔도 AI가 문맥을 찰떡같이 이해하고 최적의 객실을 찾아냅니다.
+                    </p>
+                  </div>
+                  
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>👑 VIP & 특별 고객 우대</p>
+                    <p style={{ color: 'var(--text-main)', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      방문 횟수가 많거나 특별한 분이신가요? 단골 고객님께는 전망이 더 좋거나 넓은 프리미엄 객실을 우선적으로 배정해 드립니다.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
