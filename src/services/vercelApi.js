@@ -24,6 +24,7 @@ export async function fetchTodayReservations(activeRules = []) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_API_SECRET_KEY || "BELLE_AUTO_SECURE_99381"}`
       },
       body: JSON.stringify({
         reservations,
