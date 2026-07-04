@@ -8,6 +8,38 @@ import { runAutoAssignment } from '../utils/autoAssigner';
 import * as XLSX from 'xlsx';
 import CustomRulesModal from './CustomRulesModal';
 
+const playMagicSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Magical sparkle notes (C Lydian arp)
+    const notes = [1046.50, 1318.51, 1479.98, 1567.98, 2093.00, 2637.02, 3135.96];
+    
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      const startTime = ctx.currentTime + (i * 0.08);
+      const duration = 0.8;
+      
+      osc.start(startTime);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.08, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.stop(startTime + duration);
+    });
+  } catch (err) {
+    console.error('Audio play failed', err);
+  }
+};
 function RoomInventory({ isAdmin }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +61,13 @@ function RoomInventory({ isAdmin }) {
   const [targetDate, setTargetDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedForGroup, setSelectedForGroup] = useState([]);
   
+  // Play magic sound when preview modal opens
+  useEffect(() => {
+    if (previewData) {
+      playMagicSound();
+    }
+  }, [previewData]);
+
   // 자동 배정 ON/OFF 상태 (기본값: true, localStorage에 저장)
   const [isAutoAssignEnabled, setIsAutoAssignEnabled] = useState(() => {
     const saved = localStorage.getItem('isAutoAssignEnabled');
