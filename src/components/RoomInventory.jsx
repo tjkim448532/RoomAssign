@@ -553,9 +553,19 @@ function RoomInventory({ isAdmin }) {
           </select>
         </div>
       )}
+      
       <div className="room-grid-wrapper">
-        <div className="room-grid">
-          {sortedFilteredRooms.map(room => (
+        {activeTab === 'All' ? (
+          ['101', '102', '103', '104', '105'].map(building => {
+            const buildingRooms = sortedFilteredRooms.filter(r => String(r.building) === building);
+            if (buildingRooms.length === 0) return null;
+            return (
+              <div key={building} style={{ marginBottom: '32px' }}>
+                <h3 style={{ color: 'var(--primary-color)', borderBottom: '2px solid var(--border-color)', paddingBottom: '8px', marginBottom: '16px', paddingLeft: '8px', fontSize: '18px' }}>
+                  🏢 {building}동
+                </h3>
+                <div className="room-grid">
+                  {buildingRooms.map(room => (
             <div
               key={room.id}
               onClick={() => {
@@ -605,8 +615,66 @@ function RoomInventory({ isAdmin }) {
                 </div>
               )}
             </div>
-          ))}
-        </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="room-grid">
+            {sortedFilteredRooms.map(room => (
+              <div
+                key={room.id}
+                onClick={() => {
+                  setSelectedRoom(room);
+                  setNotesInput(room.notes || '');
+                  setFeaturesInput(room.features || []);
+                }}
+                className={`room-card ${room.status}`}
+                style={highlightGroup && (room.group_name || room.groupName) === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
+              >
+                <div className="room-number">
+                   {room.roomNumber}
+                   {room.aiReason && (
+                     <span className="tooltip-icon" title={room.aiReason}>✨</span>
+                   )}
+                   {room.tags && room.tags.includes('VIP') && (
+                     <span className="tooltip-icon" title="VIP 고객">👑</span>
+                   )}
+                   {room.tags && room.tags.includes('주의') && (
+                     <span className="tooltip-icon" title="주의 고객">🚨</span>
+                   )}
+                   {room.tags && room.tags.includes('청소긴급') && (
+                     <span className="tooltip-icon" title="청소 긴급">🧹</span>
+                   )}
+                 </div>
+                <div className="room-info">{room.size} ({room.bedType})</div>
+                
+                {room.isConnecting && (
+                  <div className="connecting-info">
+                    🔗 커넥팅 ({room.adjacent})
+                  </div>
+                )}
+                
+                {room.features && room.features.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginTop: '4px' }}>
+                    {room.features.map(feat => (
+                      <span key={feat} style={{ background: '#454545', color: '#fff', padding: '2px 4px', borderRadius: '2px', fontSize: '10px' }}>
+                        {feat}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {room.notes && (
+                  <div className="room-notes" title={room.notes}>
+                    {room.notes}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* Control Modal */}
