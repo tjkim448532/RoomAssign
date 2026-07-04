@@ -648,10 +648,56 @@ function RoomInventory({ isAdmin }) {
       {/* Sync Preview Modal */}
       {previewData && (
         <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
-          <div className="modal-content" style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 className="modal-title" style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>
-              📋 PMS 예약 데이터 동기화 미리보기
-            </h3>
+          <div style={{ display: 'flex', gap: '20px', maxWidth: '1400px', width: '95%', alignItems: 'flex-start', justifyContent: 'center' }}>
+            
+            {/* AI Guide Panel */}
+            <div style={{ 
+              width: '320px', 
+              background: 'rgba(43, 34, 60, 0.85)', 
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid var(--border-light)', 
+              borderRadius: 'var(--radius-lg)', 
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+              animation: 'scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+              flexShrink: 0
+            }}>
+              <img src="/receptionist.png" alt="AI Receptionist" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-color)', marginBottom: '16px', boxShadow: '0 0 20px rgba(244, 114, 182, 0.3)' }} />
+              <div style={{ 
+                background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.15), rgba(192, 132, 252, 0.15))', 
+                border: '1px solid var(--border-color)', 
+                padding: '20px', 
+                borderRadius: '16px', 
+                color: 'var(--text-bright)', 
+                fontSize: '13px', 
+                lineHeight: '1.6',
+                position: 'relative',
+                width: '100%'
+              }}>
+                <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', borderBottom: '10px solid var(--border-color)', borderLeft: '10px solid transparent', borderRight: '10px solid transparent' }}></div>
+                <p style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--primary-color)', marginBottom: '12px', textAlign: 'center' }}>데이터를 동기화할까요?</p>
+                <p style={{ marginBottom: '16px', color: 'var(--text-main)' }}>이 리스트는 오늘 아침 기준의 PMS 예약 데이터입니다.</p>
+                
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
+                  <p style={{ fontWeight: 'bold', color: '#c084fc', marginBottom: '6px' }}>💡 AI 배정 꿀팁</p>
+                  <p style={{ color: 'var(--text-main)', fontSize: '12.5px' }}>
+                    요청 메모란에 적어주신 내용을 AI가 꼼꼼히 분석해서 배정에 반영합니다!<br/><br/>
+                    가족이나 일행이 있다면, 메모에 <strong>"김씨가족"</strong>이라고 공통된 단어를 적어주시거나,<br/><br/>
+                    리스트 좌측 체크박스를 선택해 <strong>[일행으로 묶기]</strong>를 활용해 보세요. AI가 알아서 가까운 방으로 찰떡같이 배정해 드립니다! ✨
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Existing Modal Content */}
+            <div className="modal-content" style={{ flex: 1, maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto', margin: 0, transform: 'none', animation: 'scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' }}>
+              <h3 className="modal-title" style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>
+                📋 PMS 예약 데이터 동기화 미리보기
+              </h3>
             <p className="modal-subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5', color: '#fbbf24' }}>
               ⚠️ 본 리스트는 <strong>오늘 아침 기준의 PMS 예약 데이터</strong>입니다. 실시간 연동이 아니므로 오늘 아침 이후에 추가된 당일 예약 등은 누락되어 있을 수 있습니다. 직원용 비교 대조를 위해 창이 고정 유지됩니다.
             </p>
@@ -846,6 +892,7 @@ function RoomInventory({ isAdmin }) {
               <button onClick={() => setPreviewData(null)} className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: 'white' }}>
                 ❌ 취소
               </button>
+            </div>
             </div>
           </div>
         </div>
