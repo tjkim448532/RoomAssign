@@ -84,7 +84,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
       // 복잡하므로 일단 effectiveRoomType 기준으로 size 매칭
       if (effectiveRoomType === '51P') {
         if (!r.isConnecting) return false;
-        const adjacentRoom = availableRooms.find(ar => ar.roomNumber === r.adjacent);
+        // 같은 동(building)에 있는 인접 객실(adjacent)인지 확인
+        const adjacentRoom = availableRooms.find(ar => ar.roomNumber === r.adjacent && ar.building === r.building);
         return adjacentRoom !== undefined;
       }
       return r.size === effectiveRoomType;
@@ -188,7 +189,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
     // 4. 배정 확정 및 51평 연동 처리
     if (effectiveRoomType === '51P') {
-      const adjacentRoom = availableRooms.find(r => r.roomNumber === selectedRoom.adjacent);
+      // 같은 동(building)에 있는 인접 객실을 정확히 찾아 연동
+      const adjacentRoom = availableRooms.find(r => r.roomNumber === selectedRoom.adjacent && r.building === selectedRoom.building);
         assignments.push({
           reservationId: res.reservationId,
           customerName: res.customerName,
