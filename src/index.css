@@ -425,6 +425,7 @@ h1, h2, h3, .heading-text {
 /* Left colored bar for status */
 .room-card.assigned::before { background: var(--assigned-color); }
 .room-card.blocked::before { background: var(--error-color); }
+.room-card.cleaning::before { background: #F59E0B; }
 .room-card.occupied::before { background: var(--text-muted); }
 .room-card.checkout::before { background: var(--warning-color); }
 .room-card.available::before { background: var(--success-color); }

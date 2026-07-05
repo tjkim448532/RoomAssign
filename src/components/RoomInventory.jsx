@@ -174,8 +174,13 @@ function RoomInventory({ isAdmin }) {
     try {
       const batch = writeBatch(db);
       roomsData.forEach(row => {
+        const existingRoom = rooms.find(r => r.id === row.id);
         const roomRef = doc(db, 'rooms', row.id);
-        batch.set(roomRef, row);
+        if (existingRoom && (existingRoom.status === 'blocked' || existingRoom.status === 'cleaning')) {
+          batch.set(roomRef, { ...row, status: existingRoom.status, notes: existingRoom.notes });
+        } else {
+          batch.set(roomRef, row);
+        }
       });
       await batch.commit();
       alert('객실 초기화가 완료되었습니다.');
@@ -202,14 +207,20 @@ function RoomInventory({ isAdmin }) {
       if (!confirm) return;
     }
 
-    if (status === 'blocked' && selectedRoom.status === 'assigned') {
-      const confirmKick = window.confirm(`현재 이 방에 배정된 고객이 있습니다.\n\n이 고객의 방 배정을 취소하고 다른 방으로 자동 재배정 받도록 대기열로 돌려보내시겠습니까?\n\n[확인] 배정 취소 후 객실 차단\n[취소] 고객은 그대로 두고 객실만 차단`);
+    if ((status === 'blocked' || status === 'cleaning') && selectedRoom.status === 'assigned') {
+      const confirmKick = window.confirm(`현재 이 방에 배정된 고객이 있습니다.\n\n이 고객의 방 배정을 취소하고 다른 방으로 자동 재배정 받도록 대기열로 돌려보내시겠습니까?\n\n[확인] 배정 취소 후 상태 변경\n[취소] 고객은 그대로 두고 상태만 변경`);
       if (confirmKick) {
-        finalNotes = '차단됨 (점검/수리)';
+        finalNotes = status === 'blocked' ? '차단됨 (점검/수리)' : '청소 미흡 (준비 중)';
         setNotesInput(finalNotes);
       } else {
         finalNotes = notesInput || selectedRoom.notes;
       }
+    } else if (status === 'blocked' && !notesInput) {
+      finalNotes = '차단됨 (점검/수리)';
+      setNotesInput(finalNotes);
+    } else if (status === 'cleaning' && !notesInput) {
+      finalNotes = '청소 미흡 (준비 중)';
+      setNotesInput(finalNotes);
     } else if (status === 'available') {
       finalNotes = '';
       setNotesInput('');
@@ -272,7 +283,7 @@ function RoomInventory({ isAdmin }) {
       '호수': room.roomNumber,
       '객실 타입': room.size,
       '베드 타입': room.bedType,
-      '상태': room.status === 'available' ? '빈 방' : room.status === 'assigned' ? '배정됨' : '차단됨',
+      '상태': room.status === 'available' ? '빈 방' : room.status === 'assigned' ? '배정됨' : room.status === 'cleaning' ? '청소중' : '차단됨',
       '커넥팅 연결호수': room.isConnecting ? room.adjacent : '해당없음',
       '메모(고객명)': room.notes || ''
     }));
@@ -292,10 +303,15 @@ function RoomInventory({ isAdmin }) {
     let available35P = 0;
     let unbroken51PSets = 0;
     let availableDisabled51P = 0;
+    let blocked = 0;
+    let cleaning = 0;
     
     const processedPairs = new Set();
 
     rooms.filter(r => activeTab === 'All' || r.building === activeTab).forEach(room => {
+      if (room.status === 'blocked') blocked++;
+      if (room.status === 'cleaning') cleaning++;
+      
       if (room.status === 'available') {
         if (room.size === '16P') available16P++;
         if (room.size === '35P') available35P++;
@@ -314,7 +330,7 @@ function RoomInventory({ isAdmin }) {
       }
     });
 
-    return { available16P, available35P, unbroken51PSets, availableDisabled51P };
+    return { available16P, available35P, unbroken51PSets, availableDisabled51P, blocked, cleaning };
   }, [rooms, activeTab]);
 
   const previewStats = useMemo(() => {
@@ -526,6 +542,14 @@ function RoomInventory({ isAdmin }) {
         <div className="stat-item">
           <span className="stat-label">장애인 전용 51평형:</span>
           <span className="stat-value text-amber">{stats.availableDisabled51P}</span>
+        </div>
+        <div className="stat-item" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <span className="stat-label" style={{ color: '#EF4444' }}>고장/사용불가:</span>
+          <span className="stat-value" style={{ color: '#EF4444' }}>{stats.blocked}</span>
+        </div>
+        <div className="stat-item" style={{ background: 'rgba(245, 158, 11, 0.05)', borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+          <span className="stat-label" style={{ color: '#D97706' }}>청소/준비중:</span>
+          <span className="stat-value" style={{ color: '#D97706' }}>{stats.cleaning}</span>
         </div>
       </div>
 
@@ -742,6 +766,10 @@ function RoomInventory({ isAdmin }) {
               
               <button onClick={() => handleUpdateStatus('blocked')} className="modal-btn blocked">
                 🚫 객실 차단 (수리 등)
+              </button>
+              
+              <button onClick={() => handleUpdateStatus('cleaning')} className="modal-btn" style={{ background: '#F59E0B', color: 'white', borderColor: '#D97706', padding: '0.8rem', borderRadius: 'var(--radius-md)', fontWeight: '600', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', border: '1px solid transparent' }}>
+                🧽 청소 미흡 (준비 중)
               </button>
             </div>
             
