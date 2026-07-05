@@ -135,7 +135,7 @@ function RoomInventory({ isAdmin, user }) {
     await fetchActiveRules();
     try {
       // 1. Fetch Reservations from Vercel Engine
-      const reservations = await fetchTodayReservations(activeRules);
+      const reservations = await fetchTodayReservations(targetDate, activeRules);
       
       // 이미 파이어베이스(rooms)에 배정된 예약자는 중복 배정하지 않도록 필터링
       const unassignedReservations = reservations.filter(res => {

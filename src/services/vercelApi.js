@@ -4,7 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 // Vercel 운영 서버 도메인 연결
 const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v3/roomassign/reservations";
 
-export async function fetchTodayReservations(activeRules = []) {
+export async function fetchTodayReservations(targetDate, activeRules = []) {
   console.log("Firebase에서 가상 예약 데이터를 읽은 뒤, Vercel AI 엔진(Gemini)에 분석을 요청합니다...");
   
   try {
@@ -12,8 +12,12 @@ export async function fetchTodayReservations(activeRules = []) {
     const snapshot = await getDocs(collection(db, 'reservations'));
     let reservations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 아직 방 배정이 안 된 건만 필터링
-    reservations = reservations.filter(r => !r.assignedRoom);
+    // 아직 방 배정이 안 된 건 중, 선택한 타겟 날짜(targetDate)와 일치하는 예약만 필터링
+    reservations = reservations.filter(r => 
+      !r.assignedRoom && 
+      r.checkInDate && 
+      r.checkInDate.startsWith(targetDate)
+    );
 
     if (reservations.length === 0) {
       return [];
