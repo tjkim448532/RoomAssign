@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -37,8 +37,18 @@ function App() {
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-          setRole(userSnap.data().role || 'user');
-          setIsApproved(userSnap.data().isApproved || false);
+          const userData = userSnap.data();
+          const userRole = userData.role || 'user';
+          
+          let userApproved = userData.isApproved;
+          // 기존에 가입된 'admin'이 isApproved 속성이 없는 경우 자동으로 승인 처리 (잠김 방지)
+          if (userRole === 'admin' && userApproved === undefined) {
+            userApproved = true;
+            await updateDoc(userRef, { isApproved: true });
+          }
+          
+          setRole(userRole);
+          setIsApproved(userApproved || false);
         } else {
           // Check if it's the first user
           const usersSnap = await getDocs(collection(db, 'users'));
