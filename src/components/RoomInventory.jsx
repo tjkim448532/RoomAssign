@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, onSnapshot, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, onSnapshot, getDocs, query, where, updateDoc, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
 import { fetchTodayReservations } from '../services/vercelApi';
@@ -40,13 +40,14 @@ const playMagicSound = () => {
     console.error('Audio play failed', err);
   }
 };
-function RoomInventory({ isAdmin }) {
+function RoomInventory({ isAdmin, user }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All'); // default to All view
   const [isInitializing, setIsInitializing] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [highlightGroup, setHighlightGroup] = useState('');
+  const [logs, setLogs] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const groupOptions = Array.from(new Set(rooms.map(r => r.group_name || r.groupName).filter(Boolean)));
 
@@ -80,14 +81,35 @@ function RoomInventory({ isAdmin }) {
     localStorage.setItem('isAutoAssignEnabled', JSON.stringify(newState));
   };
 
+  const logAction = async (actionText) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'logs'), {
+        text: `${user.displayName || '알 수 없음'}님이 ${actionText}`,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error('Failed to log action', e);
+    }
+  };
+
   useEffect(() => {
     fetchActiveRules();
-    const unsubscribe = onSnapshot(collection(db, 'rooms'), (snapshot) => {
+    const unsubscribeRooms = onSnapshot(collection(db, 'rooms'), (snapshot) => {
       const roomsArray = snapshot.docs.map(doc => doc.data());
       setRooms(roomsArray);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const qLogs = query(collection(db, 'logs'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribeLogs = onSnapshot(qLogs, (snapshot) => {
+      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubscribeRooms();
+      unsubscribeLogs();
+    };
   }, []);
 
   const fetchActiveRules = async () => {
@@ -153,6 +175,7 @@ function RoomInventory({ isAdmin }) {
           }
         });
         await batch.commit();
+        logAction(`스마트 자동 배정으로 ${assignments.length}개의 예약을 자동 배정했습니다.`);
         if (!silent) alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
       } else {
         if (!silent) {
@@ -250,6 +273,11 @@ function RoomInventory({ isAdmin }) {
       }
 
       await batch.commit();
+      
+      const statusNames = { 'available': '빈 방', 'assigned': '배정됨', 'blocked': '차단', 'cleaning': '청소/준비중' };
+      const statusStr = statusNames[status] || status;
+      logAction(`${selectedRoom.roomNumber}호를 [${statusStr}] 상태로 변경했습니다. (메모: ${finalNotes || '없음'})`);
+
       setSelectedRoom(null);
       setNotesInput('');
       setFeaturesInput([]);
@@ -578,8 +606,9 @@ function RoomInventory({ isAdmin }) {
         </div>
       )}
       
-      <div className="room-grid-wrapper">
-        {activeTab === 'All' ? (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+        <div className="room-grid-wrapper">
+          {activeTab === 'All' ? (
           ['101', '102', '103', '104', '105'].map(building => {
             const buildingRooms = sortedFilteredRooms.filter(r => String(r.building) === building);
             if (buildingRooms.length === 0) return null;
@@ -700,6 +729,29 @@ function RoomInventory({ isAdmin }) {
           </div>
         )}
       </div>
+
+      {/* Activity Log Panel */}
+      <div className="activity-log-panel glass-panel" style={{ maxHeight: '800px', overflowY: 'auto' }}>
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-bright)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+          📜 실시간 활동 기록
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          {logs.map(log => (
+            <div key={log.id} style={{ fontSize: '0.85rem', padding: '0.8rem', background: 'var(--bg-dark)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
+                {log.createdAt?.toDate().toLocaleString() || '방금 전'}
+              </div>
+              <div style={{ color: 'var(--text-main)', lineHeight: '1.4' }}>
+                {log.text}
+              </div>
+            </div>
+          ))}
+          {logs.length === 0 && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '2rem' }}>기록이 없습니다.</p>
+          )}
+        </div>
+      </div>
+      </div>
       
       {/* Control Modal */}
       {selectedRoom && (
@@ -764,13 +816,17 @@ function RoomInventory({ isAdmin }) {
                 </button>
               )}
               
-              <button onClick={() => handleUpdateStatus('blocked')} className="modal-btn blocked">
-                🚫 객실 차단 (수리 등)
-              </button>
-              
-              <button onClick={() => handleUpdateStatus('cleaning')} className="modal-btn" style={{ background: '#F59E0B', color: 'white', borderColor: '#D97706', padding: '0.8rem', borderRadius: 'var(--radius-md)', fontWeight: '600', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', border: '1px solid transparent' }}>
-                🧽 청소 미흡 (준비 중)
-              </button>
+              {isAdmin && (
+                <>
+                  <button onClick={() => handleUpdateStatus('blocked')} className="modal-btn blocked">
+                    🚫 객실 차단 (수리 등)
+                  </button>
+                  
+                  <button onClick={() => handleUpdateStatus('cleaning')} className="modal-btn" style={{ background: '#F59E0B', color: 'white', borderColor: '#D97706', padding: '0.8rem', borderRadius: 'var(--radius-md)', fontWeight: '600', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', border: '1px solid transparent' }}>
+                    🧽 청소 미흡 (준비 중)
+                  </button>
+                </>
+              )}
             </div>
             
             <button onClick={() => setSelectedRoom(null)} className="modal-btn close">

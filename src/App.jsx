@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -11,6 +11,7 @@ import { triggerMagicEffect } from './utils/magicEffect';
 function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,19 +38,26 @@ function App() {
 
         if (userSnap.exists()) {
           setRole(userSnap.data().role || 'user');
+          setIsApproved(userSnap.data().isApproved || false);
         } else {
-          // New user, default role is 'user'. First user can be made admin manually in console later.
+          // Check if it's the first user
+          const usersSnap = await getDocs(collection(db, 'users'));
+          const isFirstUser = usersSnap.empty;
+
           await setDoc(userRef, {
             email: currentUser.email,
             displayName: currentUser.displayName,
-            role: 'user',
+            role: isFirstUser ? 'admin' : 'user',
+            isApproved: isFirstUser,
             createdAt: new Date()
           });
-          setRole('user');
+          setRole(isFirstUser ? 'admin' : 'user');
+          setIsApproved(isFirstUser);
         }
       } else {
         setUser(null);
         setRole(null);
+        setIsApproved(false);
       }
       setLoading(false);
     });
@@ -68,6 +76,20 @@ function App() {
     );
   }
 
+function PendingApproval() {
+  return (
+    <div className="container" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', textAlign: 'center' }}>
+      <div className="glass-card animate-fade-in" style={{ padding: '3rem', maxWidth: '500px' }}>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--text-bright)' }}>승인 대기 중입니다 ⏳</h1>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+          관리자가 계정을 승인해야 리조트 시스템에 접근하실 수 있습니다.<br/>잠시만 기다려주세요.
+        </p>
+        <button className="btn" onClick={() => signOut(auth)}>로그아웃</button>
+      </div>
+    </div>
+  );
+}
+
   return (
     <Router>
       <Routes>
@@ -77,7 +99,7 @@ function App() {
         />
         <Route 
           path="/dashboard" 
-          element={user ? <Dashboard user={user} role={role} /> : <Navigate to="/login" />} 
+          element={user ? (isApproved ? <Dashboard user={user} role={role} /> : <PendingApproval />) : <Navigate to="/login" />} 
         />
         <Route 
           path="*" 

@@ -93,6 +93,15 @@ function Dashboard({ user, role }) {
     }
   };
 
+  const handleApprovalChange = async (userId, isApproved) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { isApproved });
+    } catch (error) {
+      console.error("Error updating approval: ", error);
+    }
+  };
+
   const handleAddRule = async () => {
     if (!newRule.trim()) return;
     setIsRuleLoading(true);
@@ -178,7 +187,7 @@ function Dashboard({ user, role }) {
 
       <main className="main-content">
         {currentTab === 'inventory' && (
-          <RoomInventory isAdmin={isAdmin} />
+          <RoomInventory isAdmin={isAdmin} user={user} />
         )}
 
         {currentTab === 'records' && (
@@ -243,8 +252,16 @@ function Dashboard({ user, role }) {
                         <div style={{ fontWeight: '500' }}>{u.displayName}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{u.email}</div>
                       </div>
-                      <select 
-                        value={u.role || 'user'} 
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleApprovalChange(u.id, !u.isApproved)}
+                          className={`btn ${u.isApproved ? 'btn-danger' : 'btn-primary'}`}
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', border: 'none', cursor: 'pointer' }}
+                        >
+                          {u.isApproved ? '승인 차단' : '접속 승인'}
+                        </button>
+                        <select 
+                          value={u.role || 'user'} 
                         onChange={(e) => handleRoleChange(u.id, e.target.value)}
                         style={{
                           padding: '0.5rem',
@@ -258,6 +275,7 @@ function Dashboard({ user, role }) {
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                       </select>
+                      </div>
                     </div>
                   ))}
                 </div>
