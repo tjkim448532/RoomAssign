@@ -102,6 +102,25 @@ function Dashboard({ user, role }) {
     }
   };
 
+  const handleEmailUpdate = async (userId, newEmail) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { email: newEmail });
+      alert('이메일이 성공적으로 등록되었습니다. 직원이 이 이메일로 가입할 수 있습니다.');
+    } catch (error) {
+      console.error("Error updating email: ", error);
+      alert('이메일 등록에 실패했습니다.');
+    }
+  };
+
+  const promptForEmail = (u) => {
+    const currentEmail = u.email === '이름으로 접속함' ? '' : u.email;
+    const newEmail = window.prompt(`${u.displayName} 님의 회사 이메일을 입력하세요:\n(예: user@belleforet.com)`, currentEmail);
+    if (newEmail !== null && newEmail.trim() !== '') {
+      handleEmailUpdate(u.id, newEmail.trim());
+    }
+  };
+
   const handleAddRule = async () => {
     if (!newRule.trim()) return;
     setIsRuleLoading(true);
@@ -250,7 +269,12 @@ function Dashboard({ user, role }) {
                     <div key={u.id} className="record-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem' }}>
                       <div>
                         <div style={{ fontWeight: '500' }}>{u.displayName}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                          {u.email}
+                          <button onClick={() => promptForEmail(u)} style={{ marginLeft: '10px', background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                            이메일 등록/변경
+                          </button>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <button

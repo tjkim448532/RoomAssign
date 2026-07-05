@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -50,19 +50,49 @@ function App() {
           setRole(userRole);
           setIsApproved(userApproved || false);
         } else {
-          // Check if it's the first user
-          const usersSnap = await getDocs(collection(db, 'users'));
-          const isFirstUser = usersSnap.empty;
+          // 문서가 없는 새로운 UID
+          if (currentUser.email) {
+            // 이메일로 최초 가입/로그인한 경우, 사전 등록된 이메일인지 확인
+            const q = query(collection(db, 'users'), where('email', '==', currentUser.email));
+            const emailSnap = await getDocs(q);
+            
+            if (emailSnap.empty) {
+              alert('사전 등록되지 않은 회사 이메일입니다. 관리자에게 이메일 등록을 요청하세요.');
+              await currentUser.delete().catch(e => console.error(e));
+              await signOut(auth);
+              setUser(null);
+              setRole(null);
+              setIsApproved(false);
+              setLoading(false);
+              return;
+            } else {
+              // 관리자가 등록해둔 기존 문서가 존재함. 해당 권한/이름 승계
+              const oldDoc = emailSnap.docs[0].data();
+              await setDoc(userRef, {
+                email: currentUser.email,
+                displayName: oldDoc.displayName || currentUser.displayName || '이름 없음',
+                role: oldDoc.role || 'user',
+                isApproved: oldDoc.isApproved !== undefined ? oldDoc.isApproved : true,
+                createdAt: new Date()
+              });
+              setRole(oldDoc.role || 'user');
+              setIsApproved(oldDoc.isApproved !== undefined ? oldDoc.isApproved : true);
+            }
+          } else {
+            // 익명 접속 (이름만 입력)
+            const usersSnap = await getDocs(collection(db, 'users'));
+            const isFirstUser = usersSnap.empty;
 
-          await setDoc(userRef, {
-            email: currentUser.email,
-            displayName: currentUser.displayName,
-            role: isFirstUser ? 'admin' : 'user',
-            isApproved: true, // 임시: 누구나 바로 들어올 수 있도록 자동 승인
-            createdAt: new Date()
-          });
-          setRole(isFirstUser ? 'admin' : 'user');
-          setIsApproved(true);
+            await setDoc(userRef, {
+              email: '이름으로 접속함',
+              displayName: currentUser.displayName || '알 수 없음',
+              role: isFirstUser ? 'admin' : 'user',
+              isApproved: true, 
+              createdAt: new Date()
+            });
+            setRole(isFirstUser ? 'admin' : 'user');
+            setIsApproved(true);
+          }
         }
       } else {
         setUser(null);
