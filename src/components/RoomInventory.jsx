@@ -47,6 +47,7 @@ function RoomInventory({ isAdmin, user }) {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [highlightGroup, setHighlightGroup] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [logs, setLogs] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const groupOptions = Array.from(new Set(rooms.map(r => r.group_name || r.groupName).filter(Boolean)));
@@ -322,10 +323,34 @@ function RoomInventory({ isAdmin, user }) {
       await workbook.xlsx.load(arrayBuffer);
       const worksheet = workbook.worksheets[0]; // 첫 번째 시트
 
-      // 템플릿의 모든 셀을 순회하며 방 번호 찾기
+      const targetDateObj = new Date(targetDate);
+      const mm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(targetDateObj.getDate()).padStart(2, '0');
+      const dateStringToInsert = `${mm}월 ${dd}일`;
+
+      // 템플릿의 모든 셀을 순회하며 방 번호 및 날짜 찾기
       worksheet.eachRow((row, rowNumber) => {
         row.eachCell((cell, colNumber) => {
-          const cellValue = cell.value ? String(cell.value).trim() : '';
+          // 상단 날짜 업데이트 (1~10행 내)
+          if (rowNumber <= 10 && cell.value) {
+            if (typeof cell.value === 'string' && /\d{1,2}월\s*\d{1,2}일/.test(cell.value)) {
+              cell.value = cell.value.replace(/\d{1,2}월\s*\d{1,2}일/, dateStringToInsert);
+            } else if (cell.value.richText) {
+              const hasDate = cell.value.richText.some(rt => /\d{1,2}월\s*\d{1,2}일/.test(rt.text));
+              if (hasDate) {
+                const newRichText = cell.value.richText.map(rt => ({
+                  ...rt,
+                  text: rt.text.replace(/\d{1,2}월\s*\d{1,2}일/, dateStringToInsert)
+                }));
+                cell.value = { richText: newRichText };
+              }
+            }
+          }
+
+          const cellValue = cell.value && typeof cell.value === 'string' ? cell.value.trim() : 
+                           (cell.value && cell.value.richText) ? cell.value.richText.map(rt=>rt.text).join('').trim() : 
+                           (cell.value ? String(cell.value).trim() : '');
+
           
           // 숫자로 된 방 번호만 필터링 (예: '401', '203')
           if (!/^\d+$/.test(cellValue)) return;
@@ -657,7 +682,6 @@ function RoomInventory({ isAdmin, user }) {
         ))}
       </div>
 
-      {groupOptions.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '15px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <label className="input-label" style={{ margin: 0, fontWeight: 'bold' }}>그룹 강조:</label>
@@ -682,15 +706,40 @@ function RoomInventory({ isAdmin, user }) {
               ))}
             </select>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <label className="input-label" style={{ margin: 0, fontWeight: 'bold' }}>방 찾기:</label>
+            <input 
+              type="text" 
+              value={searchQuery} 
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                if (e.target.value.trim().length > 1) {
+                  const term = e.target.value.trim().toLowerCase();
+                  const foundRoom = rooms.find(r => 
+                    r.status === 'assigned' && 
+                    (
+                      (r.customerName && r.customerName.toLowerCase().includes(term)) || 
+                      (r.group_name && r.group_name.toLowerCase().includes(term)) ||
+                      (r.notes && r.notes.toLowerCase().includes(term))
+                    )
+                  );
+                  if (foundRoom) setActiveTab(foundRoom.building);
+                }
+              }} 
+              placeholder="고객명 또는 단체명 검색"
+              className="input-field"
+              style={{ marginLeft: '0.5rem', width: '180px', padding: '6px 12px', margin: 0 }}
+            />
+          </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(244, 114, 182, 0.05)', padding: '6px 14px', borderRadius: '30px', border: '1px solid rgba(244, 114, 182, 0.2)' }}>
             <img src="/receptionist.png" alt="AI Receptionist" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #f472b6' }} />
             <span style={{ fontSize: '13px', color: 'var(--text-color)', lineHeight: '1.4' }}>
-              단체명을 선택하시면 <b>어느 동에 모여있는지</b> 노란색으로 콕 짚어드리고, 해당 동으로 <b>자동 이동</b>합니다!
+              그룹 강조나 이름 검색을 통해 방을 빠르게 찾고 해당 동으로 <b>자동 이동</b>할 수 있습니다!
             </span>
           </div>
         </div>
-      )}
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
         <div className="room-grid-wrapper">
@@ -748,9 +797,13 @@ function RoomInventory({ isAdmin, user }) {
                 </div>
               )}
               
-              {room.notes && (
+              {(room.customerName || room.notes) && (
                 <div className="room-notes" title={room.notes}>
-                  {room.notes}
+                  {room.customerName ? (
+                    room.group_name || room.groupName ? `${room.customerName} | ${room.group_name || room.groupName}` : room.customerName
+                  ) : (
+                    room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
+                  )}
                 </div>
               )}
             </div>
@@ -764,13 +817,22 @@ function RoomInventory({ isAdmin, user }) {
             {sortedFilteredRooms.map(room => (
               <div
                 key={room.id}
+                className={`room-card ${room.status}`}
+                style={
+                  (highlightGroup && (room.group_name || room.groupName) === highlightGroup) || 
+                  (searchQuery && room.status === 'assigned' && (
+                    (room.customerName && room.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (room.group_name && room.group_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (room.notes && room.notes.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )) 
+                  ? { border: '2px solid #fbbf24', boxShadow: '0 0 10px rgba(251, 191, 36, 0.4)' } 
+                  : {}
+                }
                 onClick={() => {
                   setSelectedRoom(room);
                   setNotesInput(room.notes || '');
                   setFeaturesInput(room.features || []);
                 }}
-                className={`room-card ${room.status}`}
-                style={highlightGroup && (room.group_name || room.groupName) === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
               >
                 <div className="room-number">
                    {room.roomNumber}
@@ -805,9 +867,13 @@ function RoomInventory({ isAdmin, user }) {
                   </div>
                 )}
                 
-                {room.notes && (
+                {(room.customerName || room.notes) && (
                   <div className="room-notes" title={room.notes}>
-                    {room.notes}
+                    {room.customerName ? (
+                      room.group_name || room.groupName ? `${room.customerName} | ${room.group_name || room.groupName}` : room.customerName
+                    ) : (
+                      room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
+                    )}
                   </div>
                 )}
               </div>
