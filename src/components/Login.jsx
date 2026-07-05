@@ -9,6 +9,7 @@ function Login() {
   const [name, setName] = useState('');
 
   // Email Login State
+  const [emailName, setEmailName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -30,8 +31,9 @@ function Login() {
     e.preventDefault();
     try {
       if (isRegistering) {
-        // Firebase Auth에 이메일/비밀번호 가입 시도 (성공하면 App.jsx에서 DB 검증 시작)
-        await createUserWithEmailAndPassword(auth, email, password);
+        if (!emailName.trim()) return alert('본인의 이름을 입력해주세요.');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: emailName.trim() });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -72,7 +74,7 @@ function Login() {
               cursor: 'pointer'
             }}
           >
-            간편 접속
+            임시 간편 접속
           </button>
           <button 
             onClick={() => setActiveTab('email')}
@@ -87,7 +89,7 @@ function Login() {
               cursor: 'pointer'
             }}
           >
-            회사 이메일 접속
+            정식 이메일 가입
           </button>
         </div>
 
@@ -111,20 +113,28 @@ function Login() {
             </button>
 
             <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              * 활동 내역(로그)에 이 이름이 남게 됩니다.<br/>
-              * 나중에 관리자가 이메일을 부여해주면, 이메일 탭에서 로그인할 수 있습니다.
+              * 정식 가입 전 임시로 사용 가능한 접속 방식입니다.<br/>
+              * 임시 접속자는 활동 기록에 이름이 남게 됩니다.
             </div>
           </form>
         ) : (
           <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', textAlign: 'left' }}>
+            
             {isRegistering && (
-              <div style={{ padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)', marginBottom: '0.5rem' }}>
-                <p style={{ fontSize: '0.8rem', color: '#F87171', margin: 0 }}>
-                  ⚠️ 관리자가 사전 등록해둔 회사 이메일이 아닐 경우 가입이 차단됩니다.
-                </p>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>이름 (실명)</label>
+                <input 
+                  type="text" 
+                  value={emailName} 
+                  onChange={(e) => setEmailName(e.target.value)} 
+                  className="modal-input" 
+                  placeholder="홍길동"
+                  required={isRegistering}
+                  style={{ width: '100%', background: 'var(--bg-dark)' }}
+                />
               </div>
             )}
-            
+
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>회사 이메일</label>
               <input 
@@ -151,16 +161,16 @@ function Login() {
             </div>
             
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-              {isRegistering ? '비밀번호 설정 및 가입' : '이메일로 로그인'}
+              {isRegistering ? '직원 이메일 가입하기' : '이메일로 로그인'}
             </button>
 
             <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              {isRegistering ? '이미 등록하셨나요? ' : '관리자에게 이메일을 부여받으셨나요? '}
+              {isRegistering ? '이미 등록하셨나요? ' : '아직 등록하지 않으셨나요? '}
               <span 
                 style={{ color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline' }} 
                 onClick={() => setIsRegistering(!isRegistering)}
               >
-                {isRegistering ? '로그인하기' : '최초 비밀번호 설정'}
+                {isRegistering ? '로그인하기' : '직원 신규 가입'}
               </span>
             </div>
           </form>
