@@ -150,6 +150,35 @@ function Dashboard({ user, role }) {
             📝 업무 일지 및 관리
           </div>
         </div>
+
+        {/* Sidebar Mascot Decoration */}
+        <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(162, 140, 237, 0.1) 0%, rgba(244, 114, 182, 0.15) 100%)',
+            borderRadius: '16px',
+            padding: '16px 12px',
+            border: '1px solid rgba(244, 114, 182, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            width: '100%'
+          }}>
+            {/* Sparkles */}
+            <div style={{ position: 'absolute', top: '15px', left: '15px', color: '#f472b6', fontSize: '12px', opacity: 0.8 }}>✨</div>
+            <div style={{ position: 'absolute', top: '45px', right: '15px', color: '#c084fc', fontSize: '14px', opacity: 0.7 }}>✦</div>
+            <div style={{ position: 'absolute', bottom: '70px', left: '20px', color: '#fbbf24', fontSize: '10px', opacity: 0.9 }}>⭐</div>
+            
+            <img src="/receptionist.png" alt="Mascot" style={{ width: '110px', height: '110px', objectFit: 'cover', borderRadius: '50%', border: '3px solid #ffffff', boxShadow: '0 4px 12px rgba(162, 140, 237, 0.2)', marginBottom: '12px', background: '#ffffff' }} />
+            
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '10px', fontSize: '12.5px', color: 'var(--text-main)', fontWeight: '600', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'relative', textAlign: 'center', lineHeight: '1.4', width: '100%' }}>
+              <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '0', height: '0', borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #ffffff' }}></div>
+              <span style={{ color: '#db2777' }}>오늘도 화이팅! 💖</span><br/>
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>완벽한 배정을 응원해요!</span>
+            </div>
+          </div>
+        </div>
         <div className="sidebar-header" style={{ borderTop: '1px solid var(--border-color)', borderBottom: 'none', justifyContent: 'space-between', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <div>
             <span style={{ fontSize: '11px', color: isAdmin ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold' }}>[{isAdmin ? 'Admin' : 'User'}] </span>
