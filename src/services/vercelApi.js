@@ -35,8 +35,10 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
       }
       
       // 2. 이미 캐싱된 분석 결과가 있고, 당시 분석했던 메모 원본이 현재 메모와 동일한 경우
-      if (r.ai_preferences && r.ai_cached_notes === r.notes) {
-        cachedReservations.push(r);
+      const currentNotes = r.notes || '';
+      if (r.ai_preferences && (r.ai_cached_notes || '') === currentNotes) {
+        // 캐싱된 데이터를 preferences 키로 복구하여 반환
+        cachedReservations.push({ ...r, preferences: r.ai_preferences });
         return;
       }
 
@@ -79,10 +81,10 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
       try {
         const batch = writeBatch(db);
         newlyAnalyzed.forEach(r => {
-          if (r.ai_preferences) {
+          if (r.preferences) { // Vercel API는 'preferences'로 반환함
              const resRef = doc(db, 'reservations', String(r.reservationId || r.id));
              batch.update(resRef, {
-               ai_preferences: r.ai_preferences,
+               ai_preferences: r.preferences, // DB에는 'ai_preferences' 컬럼으로 캐싱
                ai_cached_notes: r.notes || ''
              });
           }
