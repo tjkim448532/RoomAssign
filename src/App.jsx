@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import { triggerMagicEffect } from './utils/magicEffect';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -13,6 +14,15 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Global Magic Click Effect Listener
+    const handleGlobalClick = (e) => {
+      const target = e.target.closest('button, .tab-btn, .room-card, .btn, .sidebar-item');
+      if (target) {
+        triggerMagicEffect(e);
+      }
+    };
+    document.addEventListener('click', handleGlobalClick);
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -39,7 +49,10 @@ function App() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      document.removeEventListener('click', handleGlobalClick);
+    };
   }, []);
 
   if (loading) {
