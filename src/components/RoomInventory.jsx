@@ -333,7 +333,10 @@ function RoomInventory({ isAdmin, user }) {
         row.eachCell((cell, colNumber) => {
           // 상단 날짜 업데이트 (1~10행 내)
           if (rowNumber <= 10 && cell.value) {
-            if (typeof cell.value === 'string' && /\d{1,2}월\s*\d{1,2}일/.test(cell.value)) {
+            if (cell.type === ExcelJS.ValueType.Date || cell.value instanceof Date) {
+              // Date 객체인 경우 (엑셀 셀 서식 활용)
+              cell.value = targetDateObj;
+            } else if (typeof cell.value === 'string' && /\d{1,2}월\s*\d{1,2}일/.test(cell.value)) {
               cell.value = cell.value.replace(/\d{1,2}월\s*\d{1,2}일/, dateStringToInsert);
             } else if (cell.value.richText) {
               const hasDate = cell.value.richText.some(rt => /\d{1,2}월\s*\d{1,2}일/.test(rt.text));
@@ -372,7 +375,31 @@ function RoomInventory({ isAdmin, user }) {
             }
 
             // 평수 표시 및 색상 적용 (호수 기준 2칸 아래 셀)
-            const sizeRow = worksheet.getRow(rowNumber + 2);
+            const sizeRowNumber = rowNumber + 2;
+            const nameRowNumber = rowNumber + 3;
+
+            // --- 셀 병합/분리 (Dynamic Merge/Unmerge) 로직 ---
+            const isConnectingPair = matchingRoom.isConnecting && matchingRoom.adjacent;
+            const isLeftRoom = isConnectingPair && matchingRoom.size === '35P';
+            const isRightRoom = isConnectingPair && matchingRoom.size === '16P';
+
+            if (isLeftRoom) {
+              // 충돌을 방지하기 위해 먼저 병합 해제
+              try { worksheet.unMergeCells(sizeRowNumber, colNumber, sizeRowNumber, colNumber + 1); } catch (e) {}
+              try { worksheet.unMergeCells(nameRowNumber, colNumber, nameRowNumber, colNumber + 1); } catch (e) {}
+              
+              if (assignedType === '51P') {
+                worksheet.mergeCells(sizeRowNumber, colNumber, sizeRowNumber, colNumber + 1);
+                worksheet.mergeCells(nameRowNumber, colNumber, nameRowNumber, colNumber + 1);
+              }
+            }
+
+            if (isRightRoom && assignedType === '51P') {
+              // 51평형(합쳐진 예약)이면 왼쪽 35P 방에서 이미 병합 및 값 주입을 완료했으므로 오른쪽 16P 방은 건너뜀
+              return;
+            }
+
+            const sizeRow = worksheet.getRow(sizeRowNumber);
             const sizeCell = sizeRow.getCell(colNumber);
             if (assignedType === '51P') {
               sizeCell.value = '51평';
@@ -386,8 +413,7 @@ function RoomInventory({ isAdmin, user }) {
             }
 
             // 호수 기준 3칸 아래 셀이 이름(단체명) 입력될 칸
-            const targetRowNumber = rowNumber + 3;
-            const targetRow = worksheet.getRow(targetRowNumber);
+            const targetRow = worksheet.getRow(nameRowNumber);
             const targetCell = targetRow.getCell(colNumber);
             
             let guestText = '';
