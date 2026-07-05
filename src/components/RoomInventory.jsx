@@ -383,12 +383,10 @@ function RoomInventory({ isAdmin }) {
     <div className="inventory-container">
       <div className="inventory-header">
         <div className="ai-avatar-container">
-          <div style={{ width: '48px', height: '48px', background: 'var(--bg-card)', color: 'var(--primary-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-            🏦
-          </div>
-          <div className="ai-speech-bubble">
-            <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary-color)' }}>객실 배정 AI 어시스턴트입니다.</span><br/>
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>우측의 프로세스에 따라 배정을 진행해 주십시오. ➔</span>
+          <img src="/receptionist.png" alt="AI Receptionist" className="ai-avatar" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-color)', boxShadow: '0 0 10px rgba(244, 114, 182, 0.4)' }} />
+          <div className="ai-speech-bubble" style={{ border: '1px solid rgba(244, 114, 182, 0.3)', boxShadow: '0 4px 15px rgba(244, 114, 182, 0.1)' }}>
+            <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#db2777' }}>안녕하세요! 객실 배정을 도와드릴게요 ✨</span><br/>
+            <span style={{ fontSize: '12px', opacity: 0.8 }}>우측의 순서대로 버튼을 눌러주세요 ➔</span>
           </div>
         </div>
         
@@ -760,65 +758,66 @@ function RoomInventory({ isAdmin }) {
           <div style={{ display: 'flex', gap: '20px', maxWidth: '1400px', width: '95%', alignItems: 'flex-start', justifyContent: 'center' }}>
             
             {/* AI Guide Panel */}
+            {/* AI Guide Panel */}
             <div style={{ 
               width: '340px', 
-              background: '#ffffff', 
-              border: '1px solid var(--border-color)', 
+              background: 'rgba(43, 34, 60, 0.85)', 
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid var(--border-light)', 
               borderRadius: 'var(--radius-lg)', 
               padding: '24px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              boxShadow: 'var(--shadow-lg)',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
               animation: 'scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
               flexShrink: 0
             }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--bg-dark)', border: '2px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', marginBottom: '16px', boxShadow: 'var(--shadow-sm)' }}>
-                🏦
-              </div>
+              <img src="/receptionist.png" alt="AI Receptionist" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f472b6', marginBottom: '16px', boxShadow: '0 0 20px rgba(244, 114, 182, 0.3)' }} />
               <div style={{ 
-                background: 'var(--bg-dark)', 
-                border: '1px solid var(--border-color)', 
+                background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.15), rgba(192, 132, 252, 0.15))', 
+                border: '1px solid rgba(244, 114, 182, 0.3)', 
                 padding: '20px', 
-                borderRadius: '8px', 
-                color: 'var(--text-main)', 
+                borderRadius: '16px', 
+                color: '#ffffff', 
                 fontSize: '13px', 
                 lineHeight: '1.6',
                 position: 'relative',
                 width: '100%'
               }}>
-                <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', borderBottom: '10px solid var(--border-color)', borderLeft: '10px solid transparent', borderRight: '10px solid transparent' }}></div>
-                <p style={{ fontWeight: '700', fontSize: '16px', color: 'var(--primary-color)', marginBottom: '12px', textAlign: 'center' }}>데이터 동기화 가이드</p>
-                <p style={{ marginBottom: '16px', color: 'var(--text-muted)', textAlign: 'center' }}>하단 리스트는 금일 오전 기준의 PMS 예약 데이터입니다.</p>
+                <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', borderBottom: '10px solid rgba(244, 114, 182, 0.3)', borderLeft: '10px solid transparent', borderRight: '10px solid transparent' }}></div>
+                <p style={{ fontWeight: 'bold', fontSize: '16px', color: '#f472b6', marginBottom: '12px', textAlign: 'center' }}>데이터를 동기화할까요?</p>
+                <p style={{ marginBottom: '16px', color: '#e5e7eb', textAlign: 'center' }}>이 리스트는 오늘 아침 기준의 PMS 예약 데이터입니다.</p>
                 
-                <div style={{ background: '#ffffff', padding: '16px', borderRadius: '4px', borderLeft: '3px solid var(--primary-color)', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
-                  <p style={{ fontWeight: '700', color: 'var(--text-bright)', margin: 0, fontSize: '14px' }}>💡 AI 자동 배정 기능 안내</p>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', borderLeft: '3px solid #c084fc', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto' }}>
+                  <p style={{ fontWeight: 'bold', color: '#c084fc', margin: 0, fontSize: '14px' }}>💡 100% 활용하는 AI 배정 꿀팁!</p>
                   
-                  <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                    <p style={{ fontWeight: '600', color: 'var(--text-bright)', marginBottom: '4px', fontSize: '13px' }}>🧳 연박 지정 보호</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-                      <strong>연박 고객</strong>은 최우선 순위로 배정되며, 숙박 기간 내 동일 객실을 유지하도록 시스템이 보호합니다.
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🧳 연박 자동 보호</p>
+                    <p style={{ color: '#e5e7eb', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      <strong>연박 고객</strong>은 AI가 가장 최우선으로 배정하며, 며칠 머무르시는 동안 중간에 방이 바뀌지 않도록 똑똑하게 동일 객실을 찜해둡니다.
                     </p>
                   </div>
 
-                  <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                    <p style={{ fontWeight: '600', color: 'var(--text-bright)', marginBottom: '4px', fontSize: '13px' }}>🤝 일행 그룹화 배정</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-                      메모란에 <strong>공통 키워드(예: 김씨가족)</strong>를 입력하거나, 체크박스로 다중 선택 후 <strong>[일행으로 묶기]</strong>를 실행하면 인접 객실로 자동 배정됩니다.
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🤝 가족 & 일행 찰떡 배정</p>
+                    <p style={{ color: '#e5e7eb', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      일행이 있다면 메모란에 <strong>"김씨가족"</strong> 처럼 공통된 단어를 적어주시거나, 좌측 체크박스로 여러 명을 선택 후 <strong>[일행으로 묶기]</strong>를 눌러주세요. 옆방이나 가까운 층으로 알아서 붙여 드립니다!
                     </p>
                   </div>
 
-                  <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                    <p style={{ fontWeight: '600', color: 'var(--text-bright)', marginBottom: '4px', fontSize: '13px' }}>🗣️ 자연어 메모 분석</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-                      "조용한 고층", "엘리베이터 근처" 등의 <strong>자연어 메모</strong>를 분석하여 가장 적합한 조건의 객실을 매칭합니다.
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>🗣️ 자연어 처리 지원</p>
+                    <p style={{ color: '#e5e7eb', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      "조용한 고층 부탁드려요", "엘리베이터 가까운 곳" 처럼 <strong>평소 쓰시던 자연스러운 말투</strong>로 메모를 남기셔도 AI가 문맥을 찰떡같이 이해하고 최적의 객실을 찾아냅니다.
                     </p>
                   </div>
                   
-                  <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                    <p style={{ fontWeight: '600', color: 'var(--text-bright)', marginBottom: '4px', fontSize: '13px' }}>👑 VIP 및 등급별 우대</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-                      방문 이력이 많은 우수 고객에게는 프리미엄 조망 및 선호 객실을 우선적으로 할당합니다.
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                    <p style={{ fontWeight: '600', color: '#f472b6', marginBottom: '4px', fontSize: '12px' }}>👑 VIP & 특별 고객 우대</p>
+                    <p style={{ color: '#e5e7eb', fontSize: '11.5px', margin: 0, lineHeight: '1.4' }}>
+                      방문 횟수가 많거나 특별한 분이신가요? 단골 고객님께는 전망이 더 좋거나 넓은 프리미엄 객실을 우선적으로 배정해 드립니다.
                     </p>
                   </div>
                 </div>
