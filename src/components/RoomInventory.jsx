@@ -162,6 +162,9 @@ function RoomInventory({ isAdmin, user }) {
             batch.update(roomRef, {
               status: 'assigned',
               notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`,
+              customerName: assignment.customerName || null,
+              stayLength: assignment.stayLength || 1,
+              checkInDate: assignment.checkInDate || new Date().toISOString(),
               aiReason: assignment.aiReason || '',
               tags: assignment.tags || [],
               group_name: assignment.group_name || assignment.groupName || null
@@ -305,22 +308,78 @@ function RoomInventory({ isAdmin, user }) {
     }
   };
 
-  const exportToExcel = () => {
-    const exportData = rooms.map(room => ({
-      '동': room.building,
-      '호수': room.roomNumber,
-      '객실 타입': room.size,
-      '베드 타입': room.bedType,
-      '상태': room.status === 'available' ? '빈 방' : room.status === 'assigned' ? '배정됨' : room.status === 'cleaning' ? '청소중' : '차단됨',
-      '커넥팅 연결호수': room.isConnecting ? room.adjacent : '해당없음',
-      '메모(고객명)': room.notes || ''
-    }));
-    
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "객실배정현황");
-    const today = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, `객실배정현황_${today}.xlsx`);
+  const exportToExcel = async () => {
+    try {
+      // 동적 임포트로 초기 로딩 속도 최적화
+      const ExcelJS = await import('exceljs');
+      const { saveAs } = await import('file-saver');
+
+      const response = await fetch('/template.xlsx');
+      if (!response.ok) throw new Error('템플릿 파일을 찾을 수 없습니다.');
+      const arrayBuffer = await response.arrayBuffer();
+      
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      const worksheet = workbook.worksheets[0]; // 첫 번째 시트
+
+      // 템플릿의 모든 셀을 순회하며 방 번호 찾기
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          const cellValue = cell.value ? String(cell.value).trim() : '';
+          
+          // 숫자로 된 방 번호만 필터링 (예: '401', '203')
+          if (!/^\d+$/.test(cellValue)) return;
+          
+          const matchingRoom = rooms.find(r => r.roomNumber === cellValue);
+          
+          if (matchingRoom && matchingRoom.status === 'assigned') {
+            // 호수 기준 3칸 아래 셀이 입력될 칸
+            const targetRowNumber = rowNumber + 3;
+            const targetRow = worksheet.getRow(targetRowNumber);
+            const targetCell = targetRow.getCell(colNumber);
+            
+            let guestText = matchingRoom.customerName || '';
+            // PMS 연동 이름이 없으면 수기 입력된 메모를 그대로 사용 (예: "연아라 (1/2)")
+            if (!guestText && matchingRoom.notes) {
+              guestText = matchingRoom.notes.trim();
+            }
+            
+            // 자동 배정의 경우 PMS 데이터를 이용해 박수 텍스트 추가 (예: (1/2))
+            if (matchingRoom.customerName && matchingRoom.stayLength && matchingRoom.checkInDate) {
+              const checkIn = new Date(matchingRoom.checkInDate);
+              const target = new Date(targetDate);
+              const currentDay = Math.floor((target - checkIn) / (1000 * 60 * 60 * 24)) + 1;
+              
+              if (matchingRoom.stayLength > 1) {
+                guestText += ` (${currentDay}/${matchingRoom.stayLength})`;
+              }
+            } else if (!matchingRoom.customerName && matchingRoom.notes && matchingRoom.notes.includes('연박') && !matchingRoom.notes.includes('(')) {
+               // 수기 입력 중 연박이라고만 쓴 경우
+               guestText += ' (연박)';
+            }
+            
+            // 값 주입 및 폰트 스타일 (원하는 대로 조금 굵게)
+            targetCell.value = guestText;
+            targetCell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF000000' } };
+            targetCell.alignment = { vertical: 'middle', horizontal: 'center' };
+          } else if (matchingRoom && matchingRoom.status === 'blocked') {
+            const targetRow = worksheet.getRow(rowNumber + 3);
+            const targetCell = targetRow.getCell(colNumber);
+            targetCell.value = "고장/차단";
+            targetCell.font = { name: '맑은 고딕', size: 10, color: { argb: 'FFFF0000' } };
+            targetCell.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const today = new Date().toISOString().slice(0,10);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `객실배정현황_${today}.xlsx`);
+    } catch (e) {
+      console.error('엑셀 생성 중 오류:', e);
+      alert('엑셀 템플릿을 생성하는 중 오류가 발생했습니다: ' + e.message);
+    }
   };
 
   const filteredRooms = activeTab === 'All' ? rooms.slice() : rooms.filter(r => r.building === activeTab);

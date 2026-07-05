@@ -192,6 +192,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
         assignments.push({
           reservationId: res.reservationId,
           customerName: res.customerName,
+          stayLength: res.stayLength || 1,
+          checkInDate: res.checkInDate || new Date().toISOString(),
           assignedRooms: [selectedRoom.id, adjacentRoom.id],
           type: '51P',
           aiReason: aiReason,
@@ -205,14 +207,16 @@ export async function runAutoAssignment(reservations, currentRooms) {
       availableRooms.splice(availableRooms.findIndex(r => r.id === adjacentRoom.id), 1);
     } else {
       assignments.push({
-        reservationId: res.reservationId,
-        customerName: res.customerName,
-        assignedRooms: [selectedRoom.id],
-        type: effectiveRoomType,
-        aiReason: aiReason,
-        tags: tags,
-        group_name: groupName
-      });
+      reservationId: res.reservationId,
+      customerName: res.customerName,
+      stayLength: res.stayLength || 1,
+      checkInDate: res.checkInDate || new Date().toISOString(),
+      assignedRooms: [selectedRoom.id],
+      type: effectiveRoomType,
+      aiReason: aiReason,
+      tags: tags,
+      group_name: groupName
+    });
       logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료 – ${aiReason}`);
       
       // 인벤토리에서 제외
