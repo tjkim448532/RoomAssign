@@ -121,6 +121,23 @@ function Dashboard({ user, role }) {
     }
   };
 
+  const handleNameUpdate = async (userId, newName) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { displayName: newName });
+    } catch (error) {
+      console.error("Error updating name: ", error);
+      alert('이름 변경에 실패했습니다.');
+    }
+  };
+
+  const promptForName = (u) => {
+    const newName = window.prompt(`직원의 새 이름을 입력하세요:`, u.displayName);
+    if (newName !== null && newName.trim() !== '') {
+      handleNameUpdate(u.id, newName.trim());
+    }
+  };
+
   const handleAddRule = async () => {
     if (!newRule.trim()) return;
     setIsRuleLoading(true);
@@ -268,7 +285,12 @@ function Dashboard({ user, role }) {
                   {users.map(u => (
                     <div key={u.id} className="record-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem' }}>
                       <div>
-                        <div style={{ fontWeight: '500' }}>{u.displayName}</div>
+                        <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {u.displayName}
+                          <button onClick={() => promptForName(u)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }} title="이름 변경">
+                            ✏️
+                          </button>
+                        </div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           {u.email}
                           <button onClick={() => promptForEmail(u)} style={{ marginLeft: '10px', background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
