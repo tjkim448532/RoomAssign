@@ -206,8 +206,22 @@ function RoomInventory({ isAdmin, user }) {
           batch.set(roomRef, row);
         }
       });
+      
+      // 예약 데이터의 배정 정보도 모두 초기화 (완벽한 리셋)
+      const resSnapshot = await getDocs(collection(db, 'reservations'));
+      resSnapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.assignedRoom || data.assignedType || data.is_locked) {
+          batch.update(docSnap.ref, {
+            assignedRoom: null,
+            assignedType: null,
+            is_locked: false
+          });
+        }
+      });
+
       await batch.commit();
-      alert('객실 초기화가 완료되었습니다.');
+      alert('객실 및 예약 배정 내역이 모두 초기화되었습니다.');
     } catch (error) {
       console.error('Error initializing rooms:', error);
       alert('초기화 중 오류가 발생했습니다: ' + error.message);

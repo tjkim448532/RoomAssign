@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, query, where } from 'firebase/firestore';
 
 // Vercel 운영 서버 도메인 연결
 const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v3/roomassign/reservations";
@@ -8,16 +8,17 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
   console.log("Firebase에서 가상 예약 데이터를 읽은 뒤, Vercel AI 엔진(Gemini)에 분석을 요청합니다...");
   
   try {
-    // 1. 파이어베이스에서 예약 데이터 조회 (MariaDB 우회)
-    const snapshot = await getDocs(collection(db, 'reservations'));
+    // 1. 파이어베이스에서 예약 데이터 조회 (날짜 기준으로 1차 필터링하여 통신 속도 극대화)
+    const q = query(
+      collection(db, 'reservations'),
+      where('checkInDate', '>=', targetDate),
+      where('checkInDate', '<=', targetDate + '\uf8ff')
+    );
+    const snapshot = await getDocs(q);
     let reservations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 아직 방 배정이 안 된 건 중, 선택한 타겟 날짜(targetDate)와 일치하는 예약만 필터링
-    reservations = reservations.filter(r => 
-      !r.assignedRoom && 
-      r.checkInDate && 
-      r.checkInDate.startsWith(targetDate)
-    );
+    // 아직 방 배정이 안 된 건만 2차 필터링
+    reservations = reservations.filter(r => !r.assignedRoom);
 
     if (reservations.length === 0) {
       return [];
@@ -30,7 +31,7 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
     reservations.forEach(r => {
       // 1. 메모나 그룹명이 아예 없는 경우: AI 분석 불필요 (비용 0원)
       if (!r.notes && !r.group_name && !r.groupName) {
-        cachedReservations.push({ ...r, ai_preferences: {} });
+        cachedReservations.push({ ...r, preferences: {} });
         return;
       }
       
