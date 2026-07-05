@@ -58,11 +58,11 @@ function App() {
             email: currentUser.email,
             displayName: currentUser.displayName,
             role: isFirstUser ? 'admin' : 'user',
-            isApproved: isFirstUser,
+            isApproved: true, // 임시: 누구나 바로 들어올 수 있도록 자동 승인
             createdAt: new Date()
           });
           setRole(isFirstUser ? 'admin' : 'user');
-          setIsApproved(isFirstUser);
+          setIsApproved(true);
         }
       } else {
         setUser(null);
