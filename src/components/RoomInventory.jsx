@@ -358,10 +358,14 @@ function RoomInventory({ isAdmin, user }) {
                guestText += ' (연박)';
             }
             
-            // 값 주입 및 폰트 스타일 (원하는 대로 조금 굵게)
+            // 자동 배정 문구 제거 및 불필요한 공백 제거
+            guestText = guestText.replace(/\[자동 배정\]/g, '').trim();
+            
+            // 값 주입 및 폰트 스타일 (글꼴: 맑은 고딕, 기본 크기: 10)
             targetCell.value = guestText;
             targetCell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF000000' } };
-            targetCell.alignment = { vertical: 'middle', horizontal: 'center' };
+            // 글자가 길 경우 셀 크기에 맞게 자동 축소 (shrinkToFit) 적용
+            targetCell.alignment = { vertical: 'middle', horizontal: 'center', shrinkToFit: true };
           } else if (matchingRoom && matchingRoom.status === 'blocked') {
             const targetRow = worksheet.getRow(rowNumber + 3);
             const targetCell = targetRow.getCell(colNumber);
