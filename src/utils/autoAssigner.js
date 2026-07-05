@@ -33,6 +33,21 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
   logs.push(`자동 배정 엔진 시작: 총 ${reservations.length}건의 예약을 처리합니다.`);
   
+  // 0-3. 동일인(customerName) 다중 예약 시 자동 그룹화 처리
+  const customerCountMap = {};
+  reservations.forEach(r => {
+    if (r.customerName) {
+      customerCountMap[r.customerName] = (customerCountMap[r.customerName] || 0) + 1;
+    }
+  });
+
+  reservations.forEach(r => {
+    // 2개 이상 예약한 동일인인데 그룹명이 없는 경우, 고객명을 그룹명으로 자동 지정
+    if (r.customerName && customerCountMap[r.customerName] > 1 && !r.group_name && !r.groupName) {
+      r.group_name = r.customerName; 
+    }
+  });
+  
   // 0. 로컬 우선순위 정렬: VIP(is_vip) > 재방문(visit_count) > 회원(is_member) > 골프예약(tee_off_time/has_golf)
   const sortedReservations = [...reservations].sort((a, b) => {
     const aScore = (a.is_vip ? 50 : 0) + (a.visit_count ? a.visit_count * 2 : 0) + (a.is_member ? 2 : 0) + ((a.tee_off_time || a.has_golf) ? 1 : 0);
@@ -127,6 +142,11 @@ export async function runAutoAssignment(reservations, currentRooms) {
       if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && roomFeatures.includes('넓은객실')) score += 10;
       if ((guestNotes.includes('트윈') || guestNotes.includes('침대 2개') || guestNotes.includes('침대두개')) && room.bedType && room.bedType.includes('+')) score += 15;
       
+      // 단체 및 동일인 다중 예약 배정: 가급적 같은 동에 모이도록 강력한 가산점 부여
+      if (groupName && groupBuildingMap[groupName] === room.building) {
+        score += 100;
+      }
+
       room.matchScore = score;
     });
 
