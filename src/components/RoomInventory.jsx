@@ -1290,9 +1290,9 @@ function RoomInventory({ isAdmin, user }) {
                   try {
                     const batch = writeBatch(db);
                     
-                    // 1. 예약 세팅 (Upsert)
+                    // 1. 예약 세팅 (Upsert - { merge: true }를 사용하여 AI 캐싱 데이터 보존)
                     previewData.reservations.forEach(m => {
-                      batch.set(doc(collection(db, 'reservations'), String(m.reservationId)), m);
+                      batch.set(doc(collection(db, 'reservations'), String(m.reservationId)), m, { merge: true });
                     });
                     
                     // 2. 객실 상태 세팅 (Update)
