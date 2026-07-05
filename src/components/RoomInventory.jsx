@@ -358,19 +358,50 @@ function RoomInventory({ isAdmin, user }) {
           const matchingRoom = rooms.find(r => r.roomNumber === cellValue);
           
           if (matchingRoom && matchingRoom.status === 'assigned') {
-            // 호수 기준 3칸 아래 셀이 입력될 칸
+            // 51평형(합쳐진 예약) 여부 판단
+            let assignedType = matchingRoom.size;
+            if (matchingRoom.isConnecting && matchingRoom.adjacent) {
+              const adjacentRoom = rooms.find(r => r.roomNumber === matchingRoom.adjacent && r.building === matchingRoom.building);
+              if (adjacentRoom && adjacentRoom.status === 'assigned') {
+                const isSameCustomer = matchingRoom.customerName && adjacentRoom.customerName && matchingRoom.customerName === adjacentRoom.customerName;
+                const isSameGroup = (matchingRoom.group_name || matchingRoom.groupName) && (adjacentRoom.group_name || adjacentRoom.groupName) && (matchingRoom.group_name || matchingRoom.groupName) === (adjacentRoom.group_name || adjacentRoom.groupName);
+                if (isSameCustomer || isSameGroup) {
+                  assignedType = '51P';
+                }
+              }
+            }
+
+            // 평수 표시 및 색상 적용 (호수 기준 2칸 아래 셀)
+            const sizeRow = worksheet.getRow(rowNumber + 2);
+            const sizeCell = sizeRow.getCell(colNumber);
+            if (assignedType === '51P') {
+              sizeCell.value = '51평';
+              sizeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C6E7' } }; // Light Blue (합쳐진 색)
+            } else if (assignedType === '35P') {
+              sizeCell.value = '35평';
+              sizeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6E0B4' } }; // Light Green (쪼개진 색)
+            } else if (assignedType === '16P') {
+              sizeCell.value = '16평';
+              sizeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } }; // Light Orange (쪼개진 색)
+            }
+
+            // 호수 기준 3칸 아래 셀이 이름(단체명) 입력될 칸
             const targetRowNumber = rowNumber + 3;
             const targetRow = worksheet.getRow(targetRowNumber);
             const targetCell = targetRow.getCell(colNumber);
             
-            let guestText = matchingRoom.customerName || '';
-            // PMS 연동 이름이 없으면 수기 입력된 메모를 그대로 사용 (예: "연아라 (1/2)")
-            if (!guestText && matchingRoom.notes) {
-              guestText = matchingRoom.notes.trim();
+            let guestText = '';
+            // 우선순위: 1. 단체/조직명, 2. 개인 이름, 3. 수기 메모
+            if (matchingRoom.group_name || matchingRoom.groupName) {
+              guestText = matchingRoom.group_name || matchingRoom.groupName;
+            } else if (matchingRoom.customerName) {
+              guestText = matchingRoom.customerName;
+            } else if (matchingRoom.notes) {
+              guestText = matchingRoom.notes.replace(/\[자동 배정\]/g, '').trim();
             }
             
-            // 자동 배정의 경우 PMS 데이터를 이용해 박수 텍스트 추가 (예: (1/2))
-            if (matchingRoom.customerName && matchingRoom.stayLength && matchingRoom.checkInDate) {
+            // 연박 텍스트 추가 (예: (1/2))
+            if (guestText && matchingRoom.stayLength && matchingRoom.checkInDate) {
               const checkIn = new Date(matchingRoom.checkInDate);
               const target = new Date(targetDate);
               const currentDay = Math.floor((target - checkIn) / (1000 * 60 * 60 * 24)) + 1;
@@ -379,12 +410,11 @@ function RoomInventory({ isAdmin, user }) {
                 guestText += ` (${currentDay}/${matchingRoom.stayLength})`;
               }
             } else if (!matchingRoom.customerName && matchingRoom.notes && matchingRoom.notes.includes('연박') && !matchingRoom.notes.includes('(')) {
-               // 수기 입력 중 연박이라고만 쓴 경우
                guestText += ' (연박)';
             }
             
-            // 자동 배정 문구 제거 및 불필요한 공백 제거
-            guestText = guestText.replace(/\[자동 배정\]/g, '').trim();
+            // 잔여 (35P) 등 불필요한 텍스트 제거
+            guestText = guestText.replace(/\s*\(\d+[pP]\)/g, '').trim();
             
             // 값 주입 및 폰트 스타일 (글꼴: 맑은 고딕, 기본 크기: 10)
             targetCell.value = guestText;
