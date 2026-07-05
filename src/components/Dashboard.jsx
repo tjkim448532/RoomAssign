@@ -152,31 +152,17 @@ function Dashboard({ user, role }) {
         </div>
 
         {/* Sidebar Mascot Decoration */}
-        <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(162, 140, 237, 0.1) 0%, rgba(244, 114, 182, 0.15) 100%)',
-            borderRadius: '16px',
-            padding: '16px 12px',
-            border: '1px solid rgba(244, 114, 182, 0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            width: '100%'
-          }}>
-            {/* Sparkles */}
-            <div style={{ position: 'absolute', top: '15px', left: '15px', color: '#f472b6', fontSize: '12px', opacity: 0.8 }}>✨</div>
-            <div style={{ position: 'absolute', top: '45px', right: '15px', color: '#c084fc', fontSize: '14px', opacity: 0.7 }}>✦</div>
-            <div style={{ position: 'absolute', bottom: '70px', left: '20px', color: '#fbbf24', fontSize: '10px', opacity: 0.9 }}>⭐</div>
-            
-            <img src="/receptionist.png" alt="Mascot" style={{ width: '110px', height: '110px', objectFit: 'cover', borderRadius: '50%', border: '3px solid #ffffff', boxShadow: '0 4px 12px rgba(162, 140, 237, 0.2)', marginBottom: '12px', background: '#ffffff' }} />
-            
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '10px', fontSize: '12.5px', color: 'var(--text-main)', fontWeight: '600', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'relative', textAlign: 'center', lineHeight: '1.4', width: '100%' }}>
-              <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '0', height: '0', borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #ffffff' }}></div>
-              <span style={{ color: '#db2777' }}>오늘도 화이팅! 💖</span><br/>
-              <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>완벽한 배정을 응원해요!</span>
-            </div>
+        <div style={{ position: 'relative', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '-20px' }}>
+          {/* Sparkles */}
+          <div style={{ position: 'absolute', top: '20%', left: '10%', color: '#f472b6', fontSize: '16px', opacity: 0.8, animation: 'pulse 2s infinite', zIndex: 2 }}>✨</div>
+          <div style={{ position: 'absolute', top: '40%', right: '15%', color: '#c084fc', fontSize: '18px', opacity: 0.7, animation: 'pulse 3s infinite', zIndex: 2 }}>✦</div>
+          <div style={{ position: 'absolute', bottom: '40%', left: '15%', color: '#fbbf24', fontSize: '14px', opacity: 0.9, animation: 'pulse 1.5s infinite', zIndex: 2 }}>⭐</div>
+          
+          <img src="/receptionist_cheerful.png" alt="Mascot" style={{ width: '100%', height: 'auto', objectFit: 'contain', mixBlendMode: 'multiply', maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', marginBottom: '-20px' }} />
+          
+          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '12px', fontSize: '13px', color: 'var(--text-main)', fontWeight: '600', boxShadow: '0 4px 20px rgba(162, 140, 237, 0.25)', border: '1px solid rgba(244, 114, 182, 0.2)', position: 'relative', width: '85%', textAlign: 'center', lineHeight: '1.4', zIndex: 3, marginBottom: '20px' }}>
+            <span style={{ color: '#db2777' }}>오늘도 화이팅! 💖</span><br/>
+            <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>완벽한 배정을 응원해요!</span>
           </div>
         </div>
         <div className="sidebar-header" style={{ borderTop: '1px solid var(--border-color)', borderBottom: 'none', justifyContent: 'space-between', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
