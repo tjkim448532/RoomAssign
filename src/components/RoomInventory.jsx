@@ -754,8 +754,8 @@ function RoomInventory({ isAdmin }) {
       
       {/* Sync Preview Modal */}
       {previewData && (
-        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
-          <div style={{ display: 'flex', gap: '20px', maxWidth: '1400px', width: '95%', alignItems: 'flex-start', justifyContent: 'center' }}>
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', maxWidth: '1400px', width: '95%', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: '5vh' }}>
             
             {/* AI Guide Panel */}
             {/* AI Guide Panel */}
@@ -836,18 +836,18 @@ function RoomInventory({ isAdmin }) {
             {/* Subtotal Area */}
             {previewStats && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
-                <span style={{ fontWeight: 'bold', color: 'white' }}>총 대기 고객: {previewStats.total}명</span>
-                <span style={{ color: '#9CA3AF' }}>|</span>
+                <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>총 대기 고객: {previewStats.total}명</span>
+                <span style={{ color: 'var(--text-muted)' }}>|</span>
                 {Object.entries(previewStats.rooms).sort((a,b)=>a[0].localeCompare(b[0])).map(([type, count]) => (
-                  <span key={type} style={{ color: '#E5E7EB' }}>{type}: <span style={{ color: '#34D399', fontWeight: 'bold' }}>{count}</span>개</span>
+                  <span key={type} style={{ color: 'var(--text-main)' }}>{type}: <span style={{ color: '#059669', fontWeight: 'bold' }}>{count}</span>개</span>
                 ))}
               </div>
             )}
             
-            <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', border: '1px solid var(--border-light)' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', minHeight: '36px' }}>
-                <span style={{ color: '#9CA3AF', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>
                   {selectedForGroup.length > 0 ? `${selectedForGroup.length}명 선택됨` : '리스트에서 일행을 체크하여 하나로 묶어보세요.'}
                 </span>
                 {selectedForGroup.length >= 2 && (
@@ -882,7 +882,7 @@ function RoomInventory({ isAdmin }) {
                 </thead>
                 <tbody>
                   {previewData.reservations.map((res, index) => (
-                    <tr key={res.reservationId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: selectedForGroup.includes(res.reservationId) ? 'rgba(79, 70, 229, 0.15)' : 'transparent', transition: 'background 0.2s' }}>
+                    <tr key={res.reservationId} style={{ borderBottom: '1px solid var(--border-light)', background: selectedForGroup.includes(res.reservationId) ? 'rgba(244, 114, 182, 0.1)' : 'transparent', transition: 'background 0.2s' }}>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
                         <input 
                           type="checkbox" 
@@ -894,8 +894,8 @@ function RoomInventory({ isAdmin }) {
                           style={{ cursor: 'pointer' }}
                         />
                       </td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
-                        <span style={{ color: '#6B7280', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                        <span style={{ color: 'var(--text-muted)', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
                         {res.group_name || res.groupName || res.agencyName ? (
                           <>
                             <span style={{ color: '#F87171' }}>{res.group_name || res.groupName || res.agencyName}</span>

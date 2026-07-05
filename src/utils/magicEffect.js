@@ -84,15 +84,26 @@ const createSparkle = (x, y) => {
 };
 
 export const triggerMagicEffect = (e) => {
-  // Play sound
-  playMagicSound();
-  
-  // Create 5-8 sparkles
-  const count = Math.floor(Math.random() * 4) + 5;
-  for (let i = 0; i < count; i++) {
-    // Delay slightly to make it look like a burst
-    setTimeout(() => {
-      createSparkle(e.clientX, e.clientY);
-    }, i * 20);
+  try {
+    // Play sound safely
+    try {
+      playMagicSound();
+    } catch (err) {
+      console.warn('Audio play failed', err);
+    }
+    
+    // Create sparkles safely
+    const count = Math.floor(Math.random() * 4) + 5;
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        try {
+          createSparkle(e.clientX, e.clientY);
+        } catch (err) {
+          console.warn('Sparkle creation failed', err);
+        }
+      }, i * 20);
+    }
+  } catch (globalErr) {
+    console.error('Magic effect error', globalErr);
   }
 };

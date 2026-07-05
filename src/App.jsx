@@ -16,9 +16,14 @@ function App() {
   useEffect(() => {
     // Global Magic Click Effect Listener
     const handleGlobalClick = (e) => {
-      const target = e.target.closest('button, .tab-btn, .room-card, .btn, .sidebar-item');
-      if (target) {
-        triggerMagicEffect(e);
+      try {
+        if (!e.target || typeof e.target.closest !== 'function') return;
+        const target = e.target.closest('button, .tab-btn, .room-card, .btn, .sidebar-item');
+        if (target) {
+          triggerMagicEffect(e);
+        }
+      } catch (err) {
+        console.error("Magic effect error:", err);
       }
     };
     document.addEventListener('click', handleGlobalClick);
