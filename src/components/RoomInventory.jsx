@@ -137,21 +137,18 @@ function RoomInventory({ isAdmin, user }) {
     try {
       // 1. Fetch Reservations from Vercel Engine
       const reservations = await fetchTodayReservations(targetDate, activeRules);
-      
-      // 이미 파이어베이스(rooms)에 배정된 예약자는 중복 배정하지 않도록 필터링
-      const unassignedReservations = reservations.filter(res => {
-        const isAlreadyAssigned = rooms.some(r => r.notes && r.notes.includes(res.customerName));
-        return !isAlreadyAssigned;
-      });
 
-      if (unassignedReservations.length === 0) {
+      // 이미 모두 배정되었는지 간단히 확인 (빠른 리턴용)
+      const allAssigned = reservations.every(res => res.assignedRoom || rooms.some(r => r.notes && r.notes.includes(res.customerName)));
+      if (allAssigned && reservations.length > 0) {
         if (!silent) alert('모든 예약이 이미 배정되었거나, 처리할 예약이 없습니다.');
         setIsAssigning(false);
         return;
       }
       
       // 2. Run AI Auto Assignment Engine
-      const { assignments, logs } = await runAutoAssignment(unassignedReservations, rooms);
+      // 전체 예약 데이터를 넘겨주어, 엔진 내부에서 alreadyAssignedRoomIds를 완벽히 구축하도록 함
+      const { assignments, logs } = await runAutoAssignment(reservations, rooms);
       
       // 3. Update Firebase with Assigned Results
       if (assignments.length > 0) {

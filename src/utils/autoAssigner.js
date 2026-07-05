@@ -54,8 +54,10 @@ export async function runAutoAssignment(reservations, currentRooms) {
   });
 
   for (const res of sortedReservations) {
-    if (res.assignedRoom) {
-      logs.push(`[건너뜀] ${res.customerName} 고객님은 이미 배정되었습니다 (${res.assignedRoom}).`);
+    // 이미 DB(예약)에 방이 할당되어 있거나, 수기 배정 등으로 객실 노트에 고객명이 기입된 경우 보호/건너뜀
+    const isManuallyAssigned = currentRooms.some(r => r.notes && r.notes.includes(res.customerName));
+    if (res.assignedRoom || isManuallyAssigned) {
+      logs.push(`[건너뜀] ${res.customerName} 고객님은 이미 배정되었습니다 (${res.assignedRoom || '수기 배정'}).`);
       continue;
     }
 
