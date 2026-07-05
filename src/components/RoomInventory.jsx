@@ -658,14 +658,37 @@ function RoomInventory({ isAdmin, user }) {
       </div>
 
       {groupOptions.length > 0 && (
-        <div style={{ marginBottom: '1rem' }}>
-          <label className="input-label">그룹 강조:</label>
-          <select value={highlightGroup} onChange={e => setHighlightGroup(e.target.value)} style={{ marginLeft: '0.5rem' }}>
-            <option value="">전체</option>
-            {groupOptions.map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '15px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <label className="input-label" style={{ margin: 0, fontWeight: 'bold' }}>그룹 강조:</label>
+            <select 
+              value={highlightGroup} 
+              onChange={e => {
+                const selectedGroup = e.target.value;
+                setHighlightGroup(selectedGroup);
+                if (selectedGroup) {
+                  // 해당 그룹이 배정된 첫 번째 객실을 찾아 해당 동으로 자동 탭 이동
+                  const firstRoom = rooms.find(r => (r.group_name || r.groupName) === selectedGroup && r.status === 'assigned');
+                  if (firstRoom) {
+                    setActiveTab(firstRoom.building);
+                  }
+                }
+              }} 
+              style={{ marginLeft: '0.5rem', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="">전체 (선택 안함)</option>
+              {groupOptions.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(244, 114, 182, 0.05)', padding: '6px 14px', borderRadius: '30px', border: '1px solid rgba(244, 114, 182, 0.2)' }}>
+            <img src="/receptionist.png" alt="AI Receptionist" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #f472b6' }} />
+            <span style={{ fontSize: '13px', color: 'var(--text-color)', lineHeight: '1.4' }}>
+              단체명을 선택하시면 <b>어느 동에 모여있는지</b> 노란색으로 콕 짚어드리고, 해당 동으로 <b>자동 이동</b>합니다!
+            </span>
+          </div>
         </div>
       )}
       
