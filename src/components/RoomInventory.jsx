@@ -234,6 +234,7 @@ function RoomInventory({ isAdmin, user }) {
     if (!selectedRoom) return;
 
     let finalNotes = notesInput;
+    let doKickUser = false; // 뉴: 강제 퇴실 여부 플래그
 
     // Conflict warning: check floor preference in notes vs room floor
     const noteLower = (selectedRoom.notes || '').toLowerCase();
@@ -250,6 +251,7 @@ function RoomInventory({ isAdmin, user }) {
       if (confirmKick) {
         finalNotes = status === 'blocked' ? '차단됨 (점검/수리)' : '청소 미흡 (준비 중)';
         setNotesInput(finalNotes);
+        doKickUser = true;
       } else {
         finalNotes = notesInput || selectedRoom.notes;
       }
@@ -262,6 +264,7 @@ function RoomInventory({ isAdmin, user }) {
     } else if (status === 'available') {
       finalNotes = '';
       setNotesInput('');
+      doKickUser = true; // 빈 방으로 돌리면 무조건 기존 예약자의 방을 빼야 함
     } else {
       finalNotes = notesInput || selectedRoom.notes;
     }
@@ -276,9 +279,41 @@ function RoomInventory({ isAdmin, user }) {
         tags: selectedRoom.tags || [],
         group_name: selectedRoom.group_name || selectedRoom.groupName || null
       };
+
+      if (doKickUser) {
+        // 객실 자체의 배정 데이터 세탁 (유령 데이터 방지)
+        updateData.customerName = null;
+        updateData.reservationId = null;
+        updateData.aiReason = '';
+        updateData.tags = [];
+        updateData.group_name = null;
+
+        // 해당 예약자가 존재한다면 예약 DB에서도 방 배정 해제 (대기열 강제 복귀)
+        if (selectedRoom.reservationId) {
+          const resRef = doc(db, 'reservations', String(selectedRoom.reservationId));
+          batch.update(resRef, { assignedRoom: null, assignedType: null, is_locked: false });
+          
+          // 연동된 다른 객실(51평형 반쪽 등)이 존재할 경우 이 객실들도 모두 세탁
+          rooms.forEach(r => {
+            if (r.reservationId === selectedRoom.reservationId && r.id !== selectedRoom.id) {
+              const siblingRef = doc(db, 'rooms', r.id);
+              batch.update(siblingRef, {
+                status: (as51P && selectedRoom.adjacent) ? status : 'available',
+                notes: (as51P && selectedRoom.adjacent) ? finalNotes : '',
+                customerName: null,
+                reservationId: null,
+                aiReason: '',
+                tags: [],
+                group_name: null
+              });
+            }
+          });
+        }
+      }
+
       batch.update(roomRef, updateData);
 
-      if (as51P && selectedRoom.adjacent) {
+      if (as51P && selectedRoom.adjacent && !doKickUser) {
         const adjacentId = `${selectedRoom.building}-${selectedRoom.adjacent}`;
         const adjacentRef = doc(db, 'rooms', adjacentId);
         batch.update(adjacentRef, {
@@ -1301,7 +1336,22 @@ function RoomInventory({ isAdmin, user }) {
                   try {
                     const batch = writeBatch(db);
                     
-                    // 1. 예약 세팅 (Upsert - { merge: true }를 사용하여 AI 캐싱 데이터 보존)
+                    // 1. 기존 파이어베이스 예약 데이터 조회하여, previewData에 없는(즉, 취소된) 예약은 삭제 처리
+                    const q = query(
+                      collection(db, 'reservations'),
+                      where('checkInDate', '>=', targetDate),
+                      where('checkInDate', '<=', targetDate + '\uf8ff')
+                    );
+                    const snap = await getDocs(q);
+                    const previewIds = new Set(previewData.reservations.map(r => String(r.reservationId)));
+                    
+                    snap.docs.forEach(docSnap => {
+                      if (!previewIds.has(docSnap.id)) {
+                         batch.delete(docSnap.ref); // MariaDB에서 취소/삭제된 예약 삭제 (데이터 뻥튀기 및 유령 예약 방지)
+                      }
+                    });
+
+                    // 2. 예약 세팅 (Upsert - { merge: true }를 사용하여 AI 캐싱 데이터 보존)
                     previewData.reservations.forEach(m => {
                       batch.set(doc(collection(db, 'reservations'), String(m.reservationId)), m, { merge: true });
                     });
