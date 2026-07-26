@@ -391,7 +391,7 @@ function RoomInventory({ isAdmin, user }) {
       worksheet.eachRow((row, rowNumber) => {
         row.eachCell((cell, colNumber) => {
           // 상단 날짜 업데이트 (1~10행 내)
-          if (rowNumber <= 10 && cell.value) {
+          if (cell.value) {
             const isExcelDateType = cell.type === 4; // ExcelJS.ValueType.Date is 4
             if (isExcelDateType || cell.value instanceof Date) {
               // Date 객체인 경우 (엑셀 셀 서식 활용)
@@ -426,12 +426,7 @@ function RoomInventory({ isAdmin, user }) {
             const sCell = sRow.getCell(colNumber);
             const nCell = nRow.getCell(colNumber);
             
-            const borderStyle = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-            
-            sCell.alignment = { vertical: 'middle', horizontal: 'center' };
-            sCell.border = borderStyle;
-            nCell.alignment = { vertical: 'middle', horizontal: 'center', shrinkToFit: true };
-            nCell.border = borderStyle;
+
           }
           
           if (matchingRoom && matchingRoom.status === 'assigned') {
