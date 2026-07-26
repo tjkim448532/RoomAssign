@@ -1,14 +1,12 @@
 import { db } from '../firebase';
 import { collection, getDocs, writeBatch, doc, query, where } from 'firebase/firestore';
 
-// Vercel 운영 서버 도메인 연결
-const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v3/roomassign/reservations";
+const VERCEL_API_URL = 'https://belleforet-data.vercel.app/api/v3/roomassign/reservations';
 
 export async function fetchTodayReservations(targetDate, activeRules = []) {
-  console.log("Firebase에서 가상 예약 데이터를 읽은 뒤, Vercel AI 엔진(Gemini)에 분석을 요청합니다...");
+  console.log('Firebase에서 가상 예약 데이터를 읽은 뒤, Vercel AI 엔진에 분석을 요청합니다...');
   
   try {
-    // 1. 파이어베이스에서 예약 데이터 조회 (날짜 기준으로 1차 필터링하여 통신 속도 극대화)
     const q = query(
       collection(db, 'reservations'),
       where('checkInDate', '>=', targetDate),
@@ -17,95 +15,100 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
     const snapshot = await getDocs(q);
     let reservations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 아직 방 배정이 안 된 건만 2차 필터링
     reservations = reservations.filter(r => !r.assignedRoom);
 
     if (reservations.length === 0) {
       return [];
     }
 
-    // --- AI 최적화 캐싱 및 필터링 로직 ---
     const cachedReservations = [];
     const needsAiReservations = [];
 
     reservations.forEach(r => {
-      // 1. 메모나 그룹명이 아예 없는 경우: AI 분석 불필요 (비용 0원)
-      if (!r.notes && !r.group_name && !r.groupName) {
-        cachedReservations.push({ ...r, preferences: {} });
+      const groupName = r.groupName || r.group_name;
+      if (!r.notes && !groupName) {
+        cachedReservations.push({ ...r, groupName, preferences: {} });
         return;
       }
       
-      // 2. 이미 캐싱된 분석 결과가 있고, 당시 분석했던 메모 원본이 현재 메모와 동일한 경우
       const currentNotes = r.notes || '';
       const cachedPref = r.aiPreferences || r.ai_preferences;
       const cachedNotes = r.aiCachedNotes || r.ai_cached_notes || '';
       if (cachedPref && cachedNotes === currentNotes) {
-        // 캐싱된 데이터를 preferences 키로 복구하여 반환
-        cachedReservations.push({ ...r, preferences: cachedPref });
+        cachedReservations.push({ ...r, groupName, preferences: cachedPref });
         return;
       }
 
-      // 3. 신규 예약이거나 메모가 수정된 경우 (AI 분석 필요)
-      needsAiReservations.push(r);
+      needsAiReservations.push({
+        ...r,
+        groupName: groupName,
+        group_name: groupName
+      });
     });
 
-    // 분석이 필요한 예약이 하나도 없다면 캐싱된 결과만 즉시 리턴
     if (needsAiReservations.length === 0) {
-      console.log(`✨ AI 호출 생략: 총 ${cachedReservations.length}건 캐시 사용`);
+      console.log('✨ AI 호출 생략: 총 ' + cachedReservations.length + '건 캐시 사용');
       return cachedReservations;
     }
 
-    console.log(`🤖 Vercel AI 엔진 전송: 신규/수정 ${needsAiReservations.length}건 (캐시 ${cachedReservations.length}건)`);
+    console.log('🤖 Vercel AI 엔진 전송: 총 ' + needsAiReservations.length + '건...');
 
-    // 2. Vercel AI로 분석이 필요한 예약 목록 + 관리자 특수 규칙 전달
-    const response = await fetch(VERCEL_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_API_SECRET_KEY || "BELLE_AUTO_SECURE_99381"}`
-      },
-      body: JSON.stringify({
-        reservations: needsAiReservations,
-        rules: activeRules
-      })
-    });
+    const CHUNK_SIZE = 30;
+    const newlyAnalyzed = [];
 
-    const contentType = response.headers.get('content-type');
-    if (!response.ok || !contentType || !contentType.includes('application/json')) {
-      throw new Error("Vercel AI API 통신 오류 또는 잘못된 응답 형식입니다.");
+    for (let i = 0; i < needsAiReservations.length; i += CHUNK_SIZE) {
+      const chunk = needsAiReservations.slice(i, i + CHUNK_SIZE);
+      const startNum = i + 1;
+      const endNum = Math.min(i + CHUNK_SIZE, needsAiReservations.length);
+      console.log('🤖 Vercel AI 엔진 분할 전송 [' + startNum + '~' + endNum + ' / ' + needsAiReservations.length + '건]...');
+
+      const response = await fetch(VERCEL_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (import.meta.env.VITE_API_SECRET_KEY || 'BELLE_AUTO_SECURE_99381')
+        },
+        body: JSON.stringify({
+          reservations: chunk,
+          rules: activeRules
+        })
+      });
+
+      const contentType = response.headers.get('content-type');
+      if (!response.ok || !contentType || !contentType.includes('application/json')) {
+        throw new Error('Vercel AI API 통신 오류 (' + response.status + ')');
+      }
+
+      const json = await response.json();
+      if (json.success && Array.isArray(json.data)) {
+        newlyAnalyzed.push(...json.data);
+      } else {
+        throw new Error(json.message || 'AI 엔진 응답 처리 실패');
+      }
     }
-    
-    const json = await response.json();
-    
-    if (json.success && json.data) {
-      const newlyAnalyzed = json.data;
 
-      // 3. 새로 분석된 데이터를 Firebase에 캐싱 저장
+    if (newlyAnalyzed.length > 0) {
       try {
         const batch = writeBatch(db);
         newlyAnalyzed.forEach(r => {
-          if (r.preferences) { // Vercel API는 'preferences'로 반환함
+          if (r.preferences) {
              const resRef = doc(db, 'reservations', String(r.reservationId || r.id));
              batch.update(resRef, {
-               aiPreferences: r.preferences, // DB에는 'aiPreferences' 컬럼으로 캐싱
+               aiPreferences: r.preferences,
                aiCachedNotes: r.notes || ''
              });
           }
         });
         await batch.commit();
-        console.log("💾 새로운 AI 분석 결과를 Firebase에 성공적으로 캐싱했습니다.");
+        console.log('💾 새로운 AI 분석 결과를 Firebase에 성공적으로 캐싱했습니다.');
       } catch (err) {
-        console.warn("Firebase 캐싱 저장 실패:", err);
+        console.warn('Firebase 캐싱 저장 실패:', err);
       }
-
-      // 캐싱 데이터와 신규 분석 데이터를 합쳐서 리턴
-      return [...cachedReservations, ...newlyAnalyzed];
-    } else {
-      throw new Error(json.message || "AI 엔진 응답 처리 실패");
     }
+
+    return [...cachedReservations, ...newlyAnalyzed];
   } catch (error) {
-    console.error("Vercel AI API 연동 실패:", error);
-    // API 연결 실패 시, 가짜 데이터를 리턴하는 대신 에러를 발생시킵니다. (마리아DB 실제 데이터만 사용)
-    throw new Error("AI 배정 엔진에 연결할 수 없습니다. " + error.message);
+    console.error('Vercel AI API 연동 실패:', error);
+    throw new Error('AI 배정 엔진에 연결할 수 없습니다. ' + error.message);
   }
 }
