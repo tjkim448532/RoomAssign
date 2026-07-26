@@ -392,7 +392,8 @@ function RoomInventory({ isAdmin, user }) {
         row.eachCell((cell, colNumber) => {
           // 상단 날짜 업데이트 (1~10행 내)
           if (rowNumber <= 10 && cell.value) {
-            if (cell.type === ExcelJS.ValueType.Date || cell.value instanceof Date) {
+            const isExcelDateType = cell.type === 4; // ExcelJS.ValueType.Date is 4
+            if (isExcelDateType || cell.value instanceof Date) {
               // Date 객체인 경우 (엑셀 셀 서식 활용)
               cell.value = targetDateObj;
             } else if (typeof cell.value === 'string' && /\d{1,2}월\s*\d{1,2}일/.test(cell.value)) {
@@ -517,9 +518,9 @@ function RoomInventory({ isAdmin, user }) {
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
-      const today = new Date().toISOString().slice(0,10);
+      
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `객실배정현황_${today}.xlsx`);
+      saveAs(blob, `객실배정현황_${targetDate}.xlsx`);
     } catch (e) {
       console.error('엑셀 생성 중 오류:', e);
       alert('엑셀 템플릿을 생성하는 중 오류가 발생했습니다: ' + e.message);
