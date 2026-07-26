@@ -8,6 +8,16 @@ import { runAutoAssignment } from '../utils/autoAssigner';
 import * as XLSX from 'xlsx';
 import CustomRulesModal from './CustomRulesModal';
 
+const commitInBatches = async (dbInstance, operations) => {
+  const CHUNK_SIZE = 400;
+  for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
+    const chunk = operations.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(dbInstance);
+    chunk.forEach(op => op(batch));
+    await batch.commit();
+  }
+};
+
 const playMagicSound = () => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -152,30 +162,30 @@ function RoomInventory({ isAdmin, user }) {
       
       // 3. Update Firebase with Assigned Results
       if (assignments.length > 0) {
-        const batch = writeBatch(db);
+        const ops = [];
         assignments.forEach(assignment => {
-          // 객실 업데이트
           assignment.assignedRooms.forEach(roomId => {
             const roomRef = doc(db, 'rooms', roomId);
-            batch.update(roomRef, {
+            ops.push(b => b.update(roomRef, {
               status: 'assigned',
-              notes: `[자동 배정] ${assignment.customerName} (${assignment.type})`,
+              notes: "[자동 배정] " + assignment.customerName + " (" + assignment.type + ")",
               customerName: assignment.customerName || null,
               stayLength: assignment.stayLength || 1,
               checkInDate: assignment.checkInDate || new Date().toISOString(),
               aiReason: assignment.aiReason || '',
               tags: assignment.tags || [],
-              group_name: assignment.group_name || assignment.groupName || null
-            });
+              groupName: assignment.groupName || assignment.group_name || null,
+              group_name: assignment.groupName || assignment.group_name || null
+            }));
           });
           if (assignment.reservationId) {
             const resRef = doc(db, 'reservations', String(assignment.reservationId));
-            batch.update(resRef, {
+            ops.push(b => b.update(resRef, {
               assignedRoom: assignment.assignedRooms.join(', ')
-            });
+            }));
           }
         });
-        await batch.commit();
+        await commitInBatches(db, ops);
         logAction(`스마트 자동 배정으로 ${assignments.length}개의 예약을 자동 배정했습니다.`);
         if (!silent) alert(`자동 배정이 완료되었습니다!\n총 ${assignments.length}건 배정 완료.\n\n로그:\n` + logs.join('\n'));
       } else {
@@ -1335,9 +1345,7 @@ function RoomInventory({ isAdmin, user }) {
               <button 
                 onClick={async () => {
                   try {
-                    const batch = writeBatch(db);
-                    
-                    // 1. 기존 파이어베이스 예약 데이터 조회하여, previewData에 없는(즉, 취소된) 예약은 삭제 처리
+                    const ops = [];
                     const q = query(
                       collection(db, 'reservations'),
                       where('checkInDate', '>=', targetDate),
@@ -1348,21 +1356,19 @@ function RoomInventory({ isAdmin, user }) {
                     
                     snap.docs.forEach(docSnap => {
                       if (!previewIds.has(docSnap.id)) {
-                         batch.delete(docSnap.ref); // MariaDB에서 취소/삭제된 예약 삭제 (데이터 뻥튀기 및 유령 예약 방지)
+                         ops.push(b => b.delete(docSnap.ref));
                       }
                     });
 
-                    // 2. 예약 세팅 (Upsert - { merge: true }를 사용하여 AI 캐싱 데이터 보존)
                     previewData.reservations.forEach(m => {
-                      batch.set(doc(collection(db, 'reservations'), String(m.reservationId)), m, { merge: true });
+                      ops.push(b => b.set(doc(collection(db, 'reservations'), String(m.reservationId)), m, { merge: true }));
                     });
                     
-                    // 2. 객실 상태 세팅 (Update)
                     previewData.rooms.forEach(r => {
-                      batch.update(doc(db, 'rooms', String(r.id)), { status: r.status, notes: r.notes });
+                      ops.push(b => b.update(doc(db, 'rooms', String(r.id)), { status: r.status, notes: r.notes }));
                     });
   
-                    await batch.commit();
+                    await commitInBatches(db, ops);
                     setPreviewData(null);
                     alert("데이터 동기화 완료! 스마트 배정을 실행해 보세요.");
                   } catch (err) {
