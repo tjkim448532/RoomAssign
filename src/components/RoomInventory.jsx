@@ -696,7 +696,7 @@ function RoomInventory({ isAdmin, user }) {
                         }
                       });
 
-                      const enrichedReservations = jsonToday.data.reservations.map(r => {
+                      const enrichedReservations = jsonToday.data.reservations.filter(r => r.status !== "Cancelled Reservation" && r.status !== "Cancelled" && r.status !== "취소").map(r => {
                         const info = groupInfoMap[r.customerName];
                         if (info && !r.groupName) {
                           return {
