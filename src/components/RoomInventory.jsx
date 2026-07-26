@@ -352,6 +352,22 @@ function RoomInventory({ isAdmin, user }) {
 
   const AVAILABLE_FEATURES = ['경치좋음', '조용함', '채광좋음', '엘리베이터가까움', '넓은객실'];
 
+  const handleClearLogs = async () => {
+    if (!window.confirm('실시간 활동 기록을 모두 삭제하시겠습니까?')) return;
+    try {
+      const snap = await getDocs(collection(db, 'logs'));
+      const ops = [];
+      snap.docs.forEach(d => {
+        ops.push(b => b.delete(d.ref));
+      });
+      await commitInBatches(db, ops);
+      alert('활동 기록이 모두 삭제되었습니다.');
+    } catch (e) {
+      console.error('기록 삭제 실패:', e);
+      alert('기록 삭제 중 오류가 발생했습니다: ' + e.message);
+    }
+  };
+
   const handleToggleFeature = async (feature) => {
     if (!selectedRoom) return;
     const newFeatures = featuresInput.includes(feature) 
@@ -1022,8 +1038,11 @@ function RoomInventory({ isAdmin, user }) {
 
       {/* Activity Log Panel */}
       <div className="activity-log-panel glass-panel" style={{ maxHeight: '800px', overflowY: 'auto' }}>
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-bright)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-          📜 실시간 활동 기록
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-bright)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>📜 실시간 활동 기록</span>
+          <button onClick={handleClearLogs} className="btn" style={{ padding: '4px 10px', fontSize: '12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+            🗑️ 기록 삭제
+          </button>
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
           {logs.map(log => (
