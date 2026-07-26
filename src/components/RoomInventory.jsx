@@ -521,7 +521,20 @@ function RoomInventory({ isAdmin, user }) {
             const targetCell = targetRow.getCell(colNumber);
             targetCell.value = "고장/차단";
             targetCell.font = { name: '맑은 고딕', size: 10, color: { argb: 'FFFF0000' } };
+          }
+          
+          if (matchingRoom) {
+            const sRow = worksheet.getRow(rowNumber + 2);
+            const nRow = worksheet.getRow(rowNumber + 3);
+            const sCell = sRow.getCell(colNumber);
+            const nCell = nRow.getCell(colNumber);
             
+            const borderStyle = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+            
+            sCell.alignment = { vertical: 'middle', horizontal: 'center' };
+            sCell.border = borderStyle;
+            nCell.alignment = { vertical: 'middle', horizontal: 'center', shrinkToFit: true };
+            nCell.border = borderStyle;
           }
         });
       });
