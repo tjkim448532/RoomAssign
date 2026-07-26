@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, onSnapshot, getDocs, query, where, updateDoc, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, writeBatch, onSnapshot, getDocs, query, where, updateDoc, addDoc, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import roomsData from '../data/roomsData.json';
 
 import { fetchTodayReservations } from '../services/vercelApi';
@@ -50,7 +50,7 @@ function RoomInventory({ isAdmin, user }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [logs, setLogs] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const groupOptions = Array.from(new Set(rooms.map(r => r.group_name || r.groupName).filter(Boolean)));
+  const groupOptions = Array.from(new Set(rooms.map(r => r.groupName || r.group_name).filter(Boolean)));
 
   const [notesInput, setNotesInput] = useState('');
   const [featuresInput, setFeaturesInput] = useState([]);
@@ -211,11 +211,12 @@ function RoomInventory({ isAdmin, user }) {
       const resSnapshot = await getDocs(collection(db, 'reservations'));
       resSnapshot.docs.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.assignedRoom || data.assignedType || data.is_locked) {
+        if (data.assignedRoom || data.assignedType || data.isLocked || data.is_locked) {
           batch.update(docSnap.ref, {
             assignedRoom: null,
             assignedType: null,
-            is_locked: false
+            isLocked: false,
+            is_locked: deleteField()
           });
         }
       });
@@ -277,7 +278,7 @@ function RoomInventory({ isAdmin, user }) {
         notes: finalNotes,
         aiReason: selectedRoom.aiReason || '',
         tags: selectedRoom.tags || [],
-        group_name: selectedRoom.group_name || selectedRoom.groupName || null
+        group_name: selectedRoom.groupName || selectedRoom.group_name || null
       };
 
       if (doKickUser) {
@@ -413,7 +414,7 @@ function RoomInventory({ isAdmin, user }) {
               const adjacentRoom = rooms.find(r => r.roomNumber === matchingRoom.adjacent && r.building === matchingRoom.building);
               if (adjacentRoom && adjacentRoom.status === 'assigned') {
                 const isSameCustomer = matchingRoom.customerName && adjacentRoom.customerName && matchingRoom.customerName === adjacentRoom.customerName;
-                const isSameGroup = (matchingRoom.group_name || matchingRoom.groupName) && (adjacentRoom.group_name || adjacentRoom.groupName) && (matchingRoom.group_name || matchingRoom.groupName) === (adjacentRoom.group_name || adjacentRoom.groupName);
+                const isSameGroup = (matchingRoom.groupName || matchingRoom.group_name) && (adjacentRoom.groupName || adjacentRoom.group_name) && (matchingRoom.groupName || matchingRoom.group_name) === (adjacentRoom.groupName || adjacentRoom.group_name);
                 if (isSameCustomer || isSameGroup) {
                   assignedType = '51P';
                 }
@@ -464,8 +465,8 @@ function RoomInventory({ isAdmin, user }) {
             
             let guestText = '';
             // 우선순위: 1. 단체/조직명, 2. 개인 이름, 3. 수기 메모
-            if (matchingRoom.group_name || matchingRoom.groupName) {
-              guestText = matchingRoom.group_name || matchingRoom.groupName;
+            if (matchingRoom.groupName || matchingRoom.group_name) {
+              guestText = matchingRoom.groupName || matchingRoom.group_name;
             } else if (matchingRoom.customerName) {
               guestText = matchingRoom.customerName;
             } else if (matchingRoom.notes) {
@@ -583,7 +584,7 @@ function RoomInventory({ isAdmin, user }) {
     const selectedRes = previewData.reservations.filter(r => selectedForGroup.includes(r.reservationId));
     if (selectedRes.length === 0) return;
     
-    let repName = selectedRes[0].group_name || selectedRes[0].groupName || selectedRes[0].agencyName;
+    let repName = selectedRes[0].groupName || selectedRes[0].group_name || selectedRes[0].agencyName;
     if (!repName) {
       const extracted = selectedRes[0].customerName?.replace(/\(.*?\)/g, '').trim();
       repName = extracted || selectedRes[0].customerName;
@@ -794,7 +795,7 @@ function RoomInventory({ isAdmin, user }) {
                 setHighlightGroup(selectedGroup);
                 if (selectedGroup) {
                   // 해당 그룹이 배정된 첫 번째 객실을 찾아 해당 동으로 자동 탭 이동
-                  const firstRoom = rooms.find(r => (r.group_name || r.groupName) === selectedGroup && r.status === 'assigned');
+                  const firstRoom = rooms.find(r => (r.groupName || r.group_name) === selectedGroup && r.status === 'assigned');
                   if (firstRoom) {
                     setActiveTab(firstRoom.building);
                   }
@@ -822,7 +823,7 @@ function RoomInventory({ isAdmin, user }) {
                     r.status === 'assigned' && 
                     (
                       (r.customerName && r.customerName.toLowerCase().includes(term)) || 
-                      (r.group_name && r.group_name.toLowerCase().includes(term)) ||
+                      ((r.groupName || r.group_name) && (r.groupName || r.group_name).toLowerCase().includes(term)) ||
                       (r.notes && r.notes.toLowerCase().includes(term))
                     )
                   );
@@ -864,7 +865,7 @@ function RoomInventory({ isAdmin, user }) {
                 setFeaturesInput(room.features || []);
               }}
               className={`room-card ${room.status}`}
-              style={highlightGroup && (room.group_name || room.groupName) === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
+              style={highlightGroup && (room.groupName || room.group_name) === highlightGroup ? { border: '2px solid #fbbf24' } : {}}
             >
               <div className="room-number">
                  {room.roomNumber}
@@ -902,7 +903,7 @@ function RoomInventory({ isAdmin, user }) {
               {(room.customerName || room.notes) && (
                 <div className="room-notes" title={room.notes}>
                   {room.customerName ? (
-                    room.group_name || room.groupName ? `${room.customerName} | ${room.group_name || room.groupName}` : room.customerName
+                    room.groupName || room.group_name ? `${room.customerName} | ${room.groupName || room.group_name}` : room.customerName
                   ) : (
                     room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
                   )}
@@ -921,7 +922,7 @@ function RoomInventory({ isAdmin, user }) {
                 key={room.id}
                 className={`room-card ${room.status}`}
                 style={
-                  (highlightGroup && (room.group_name || room.groupName) === highlightGroup) || 
+                  (highlightGroup && (room.groupName || room.group_name) === highlightGroup) || 
                   (searchQuery && room.status === 'assigned' && (
                     (room.customerName && room.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                     (room.group_name && room.group_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -972,7 +973,7 @@ function RoomInventory({ isAdmin, user }) {
                 {(room.customerName || room.notes) && (
                   <div className="room-notes" title={room.notes}>
                     {room.customerName ? (
-                      room.group_name || room.groupName ? `${room.customerName} | ${room.group_name || room.groupName}` : room.customerName
+                      room.groupName || room.group_name ? `${room.customerName} | ${room.groupName || room.group_name}` : room.customerName
                     ) : (
                       room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
                     )}
@@ -1234,9 +1235,9 @@ function RoomInventory({ isAdmin, user }) {
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                         <span style={{ color: 'var(--text-muted)', marginRight: '8px', fontSize: '0.85rem' }}>{index + 1}</span>
-                        {res.group_name || res.groupName || res.agencyName ? (
+                        {res.groupName || res.group_name || res.agencyName ? (
                           <>
-                            <span style={{ color: '#F87171' }}>{res.group_name || res.groupName || res.agencyName}</span>
+                            <span style={{ color: '#F87171' }}>{res.groupName || res.group_name || res.agencyName}</span>
                             <span style={{ fontSize: '0.8rem', color: '#9CA3AF', marginLeft: '6px', fontWeight: 'normal' }}>({res.customerName})</span>
                           </>
                         ) : (
@@ -1272,12 +1273,12 @@ function RoomInventory({ isAdmin, user }) {
                               {res.marketChannel}
                             </span>
                           )}
-                          {Boolean(res.is_member) || res.is_member === 1 ? (
+                          {Boolean(res.isMember || res.is_member) || res.is_member === 1 ? (
                             <span style={{ display: 'inline-block', color: '#FCD34D', fontWeight: 'bold', fontSize: '0.8rem', padding: '2px 0' }}>👑 회원</span>
                           ) : (
                             <span style={{ display: 'inline-block', color: '#9CA3AF', fontSize: '0.8rem', padding: '2px 0' }}>👤 비회원</span>
                           )}
-                          {Boolean(res.has_golf) || res.has_golf === 1 ? (
+                          {Boolean(res.hasGolf || res.has_golf) || res.has_golf === 1 ? (
                             <span style={{ display: 'inline-block', color: '#34D399', fontWeight: 'bold', fontSize: '0.8rem', padding: '2px 0' }}>⛳ 골프</span>
                           ) : (
                             <span style={{ display: 'inline-block', color: '#9CA3AF', fontSize: '0.8rem', padding: '2px 0' }}>-</span>

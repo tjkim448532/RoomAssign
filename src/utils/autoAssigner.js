@@ -42,21 +42,21 @@ export async function runAutoAssignment(reservations, currentRooms) {
   reservations.forEach(r => {
     // 2개 이상 예약한 동일인인데 그룹명이 없는 경우, 고객명을 그룹명으로 자동 지정
     if (r.customerName && customerCountMap[r.customerName] > 1 && !r.group_name && !r.groupName) {
-      r.group_name = r.customerName; 
+      r.groupName = r.customerName; 
     }
   });
   
   // 0. 전체 우선순위 정렬: VIP(isVip/is_vip) > 방문횟수(visitCount/visit_count) > 회원(is_member) > 골프(teeOffTime/tee_off_time/has_golf)
   const sortedReservations = [...reservations].sort((a, b) => {
-    const aVip = a.isVip || a.is_vip;
-    const aVisit = a.visitCount || a.visit_count || 0;
-    const aTeeOff = a.teeOffTime || a.tee_off_time || a.has_golf;
-    const aScore = (aVip ? 50 : 0) + (aVisit * 2) + (a.is_member ? 2 : 0) + (aTeeOff ? 1 : 0);
+    const aVip = a.isVip ?? a.is_vip;
+    const aVisit = (a.visitCount ?? a.visit_count) || 0;
+    const aTeeOff = a.teeOffTime ?? a.tee_off_time ?? a.hasGolf ?? a.has_golf;
+    const aScore = (aVip ? 50 : 0) + (aVisit * 2) + (a.isMember ?? a.is_member ? 2 : 0) + (aTeeOff ? 1 : 0);
     
-    const bVip = b.isVip || b.is_vip;
-    const bVisit = b.visitCount || b.visit_count || 0;
-    const bTeeOff = b.teeOffTime || b.tee_off_time || b.has_golf;
-    const bScore = (bVip ? 50 : 0) + (bVisit * 2) + (b.is_member ? 2 : 0) + (bTeeOff ? 1 : 0);
+    const bVip = b.isVip ?? b.is_vip;
+    const bVisit = (b.visitCount ?? b.visit_count) || 0;
+    const bTeeOff = b.teeOffTime ?? b.tee_off_time ?? b.hasGolf ?? b.has_golf;
+    const bScore = (bVip ? 50 : 0) + (bVisit * 2) + (b.isMember ?? b.is_member ? 2 : 0) + (bTeeOff ? 1 : 0);
     
     return bScore - aScore; // 내림차순 (점수가 높은 사람이 먼저 배정)
   });
@@ -78,7 +78,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
     };
     
     // DB에서 파싱해준 Flag 우선 적용
-    if (res.reqHighFloor || res.req_high_floor) prefs.wantsHighFloor = true;
+    if (res.reqHighFloor ?? res.req_high_floor) prefs.wantsHighFloor = true;
     
     // 비고(메모) 기반 자연어 추가 분석 (AI 엔진 오프라인 대비 또는 보완)
     const guestNotes = res.notes || '';
@@ -87,7 +87,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
     if (guestNotes.includes('장애인') || guestNotes.includes('휠체어')) prefs.needsAccessible = true;
 
     // 단체(그룹) 일괄 배정 로직: 같은 그룹은 가급적 같은 동에 배정
-    const groupName = res.group_name || res.groupName;
+    const groupName = res.groupName || res.group_name;
     if (groupName && !prefs.forcedBuilding && (guestNotes.includes('같은동') || guestNotes.includes('같은 동') || guestNotes.includes('인접') || guestNotes.includes('모여'))) {
       const groupKey = groupName;
       if (groupBuildingMap[groupKey]) {
@@ -134,8 +134,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
 // guestNotes already defined earlier
     candidateRooms.forEach(room => {
       let score = 0;
-      const roomFeatures = room.room_features || room.features || [];
-      const quietReq = res.reqQuiet || res.req_quiet || guestNotes.includes('조용') || guestNotes.includes('소음');
+      const roomFeatures = room.features || room.room_features || [];
+      const quietReq = (res.reqQuiet ?? res.req_quiet) || guestNotes.includes('조용') || guestNotes.includes('소음');
       if (quietReq && roomFeatures.includes('조용함')) score += 10;
       
       const viewReq = guestNotes.includes('경치') || guestNotes.includes('뷰') || guestNotes.includes('전망');
@@ -144,7 +144,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
       const lightReq = guestNotes.includes('채광') || guestNotes.includes('햇빛') || guestNotes.includes('밝은');
       if (lightReq && roomFeatures.includes('채광좋음')) score += 10;
       
-      const elevatorReq = res.reqNearElevator || res.req_near_elevator || guestNotes.includes('엘리베이터') || guestNotes.includes('엘베') || guestNotes.includes('가까운');
+      const elevatorReq = (res.reqNearElevator ?? res.req_near_elevator) || guestNotes.includes('엘리베이터') || guestNotes.includes('엘베') || guestNotes.includes('가까운');
       if (elevatorReq && roomFeatures.includes('엘리베이터가까움')) score += 10;
       
       if ((guestNotes.includes('넓은') || guestNotes.includes('큰방') || guestNotes.includes('큰 방')) && roomFeatures.includes('넓은객실')) score += 10;
@@ -162,8 +162,8 @@ export async function runAutoAssignment(reservations, currentRooms) {
     candidateRooms.sort((a, b) => {
       // 1순위: 장애인 객실 우선 배정 (조건 충족 시)
       if (prefs.needsAccessible) {
-        const aHandicap = a.is_handicap_accessible || a.isDisabled;
-        const bHandicap = b.is_handicap_accessible || b.isDisabled;
+        const aHandicap = a.isDisabled ?? a.is_handicap_accessible;
+        const bHandicap = b.isDisabled ?? b.is_handicap_accessible;
         if (aHandicap && !bHandicap) return -1;
         if (!aHandicap && bHandicap) return 1;
       }
