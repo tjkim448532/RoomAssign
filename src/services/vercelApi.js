@@ -18,10 +18,11 @@ const commitInBatches = async (dbInstance, operations) => {
 function parseNoteLocally(note = "", groupName = "") {
   const text = (note || "").trim();
   const lower = text.toLowerCase();
+  const isEmptyOrTrivial = !text || text === "1박" || text === "2박" || text === "3박" || text === "골프" || lower.startsWith("채널상품명");
   
   // 1. 메모가 없거나, 단순 1박/2박/채널상품명/결제 관련 메모인 경우: 객실 배치 선호도 0건이므로 즉시 완료
-  if (!text || text === "1박" || text === "2박" || text === "3박" || text === "골프" || lower.startsWith("채널상품명")) {
-    return { preferences: {}, isFullyParsed: true };
+  if (isEmptyOrTrivial) {
+    return { preferences: {}, isFullyParsed: true, isEmptyOrTrivial: true };
   }
 
   // 2. 명확한 패턴 기반 0.001초 로컬 파싱
@@ -57,7 +58,8 @@ function parseNoteLocally(note = "", groupName = "") {
 
   return {
     preferences: prefs,
-    isFullyParsed: matched || isUtilityNote || (!matched && text.length < 15)
+    isFullyParsed: matched || isUtilityNote || (!matched && text.length < 15),
+    isEmptyOrTrivial: false
   };
 }
 
@@ -96,7 +98,7 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
 
       // 2. 초고속 로컬 선호도 파서 적용 (관리자 특수 규칙이 없거나 사전 패턴에 매칭될 때)
       const localResult = parseNoteLocally(currentNotes, groupName);
-      if (localResult.isFullyParsed && (!activeRules || activeRules.length === 0)) {
+      if (localResult.isFullyParsed && (!activeRules || activeRules.length === 0 || localResult.isEmptyOrTrivial)) {
         cachedReservations.push({
           ...r,
           groupName,
@@ -136,7 +138,7 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
     const newlyAnalyzed = [];
 
     // 동시 3개 청크씩 병렬 실행
-    const CONCURRENCY = 3;
+    const CONCURRENCY = 2;
     for (let i = 0; i < chunks.length; i += CONCURRENCY) {
       const batchChunks = chunks.slice(i, i + CONCURRENCY);
       console.log("🤖 Vercel AI 병렬 전송 실행 중 (" + (i + 1) + "~" + Math.min(i + CONCURRENCY, chunks.length) + " / 총 " + chunks.length + "개 그룹)...");
@@ -145,7 +147,7 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
         batchChunks.map(async (c) => {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             const response = await fetch(VERCEL_API_URL, {
               method: "POST",
