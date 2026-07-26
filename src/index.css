@@ -247,6 +247,8 @@ h1, h2, h3, .heading-text {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow-y: auto;
+  padding-bottom: 40px;
 }
 
 .inventory-header {
@@ -371,7 +373,6 @@ h1, h2, h3, .heading-text {
 /* Room Grid - Banking Cards */
 .room-grid-wrapper {
   flex: 1;
-  overflow-y: auto;
   padding: 24px;
   background: var(--bg-dark);
 }
