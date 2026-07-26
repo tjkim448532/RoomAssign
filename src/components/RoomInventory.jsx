@@ -72,6 +72,8 @@ function RoomInventory({ isAdmin, user }) {
   const [previewData, setPreviewData] = useState(null);
   const [targetDate, setTargetDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedForGroup, setSelectedForGroup] = useState([]);
+  const [isAiReady, setIsAiReady] = useState(false);
+  const [isAiBackgroundSyncing, setIsAiBackgroundSyncing] = useState(false);
   
   // Play magic sound when preview modal opens
   useEffect(() => {

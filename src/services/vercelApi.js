@@ -63,6 +63,17 @@ function parseNoteLocally(note = "", groupName = "") {
   };
 }
 
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export async function fetchTodayReservations(targetDate, activeRules = []) {
   console.log("Firebase에서 가상 예약 데이터를 읽은 뒤, 지능형 파서 및 Vercel AI 엔진으로 분석을 요청합니다...");
   
@@ -74,6 +85,17 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
     );
     const snapshot = await getDocs(q);
     let reservations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // 글로벌 메모 사전 로드
+    let globalDictionary = {};
+    try {
+      const dictSnap = await getDocs(collection(db, "ai_note_dictionary"));
+      dictSnap.forEach(d => {
+        globalDictionary[d.id] = d.data().preferences;
+      });
+    } catch(err) {
+      console.warn("글로벌 사전 로딩 실패", err);
+    }
     
     reservations = reservations.filter(r => !r.assignedRoom);
 
@@ -109,7 +131,20 @@ export async function fetchTodayReservations(targetDate, activeRules = []) {
         return;
       }
 
-      // 3. 복잡한 문맥 판단이 필요한 건만 Vercel AI API 전송
+      // 3. 글로벌 메모 사전 매칭 체크
+      const noteHash = hashString(currentNotes.trim());
+      if (globalDictionary[noteHash]) {
+        cachedReservations.push({
+          ...r,
+          groupName,
+          preferences: globalDictionary[noteHash],
+          aiPreferences: globalDictionary[noteHash],
+          aiCachedNotes: currentNotes
+        });
+        return;
+      }
+
+      // 4. 복잡한 문맥 판단이 필요한 건만 Vercel AI API 전송
       needsAiReservations.push({
         ...r,
         groupName: groupName,
