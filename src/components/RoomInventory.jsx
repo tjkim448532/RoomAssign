@@ -707,9 +707,9 @@ function RoomInventory({ isAdmin, user }) {
                     const prevDate2 = new Date(new Date(targetDate).getTime() - 86400000 * 2).toISOString().split('T')[0];
                     
                     const [resToday, resPrev1, resPrev2] = await Promise.all([
-                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${targetDate}`),
-                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate1}`),
-                      fetch(`https://belleforet-data.vercel.app/api/v3/roomassign/mariadb-summary?targetDate=${prevDate2}`)
+                      fetch(`https://belleforet-data.vercel.app/api/v6/roomassign/summary?targetDate=${targetDate}`),
+                      fetch(`https://belleforet-data.vercel.app/api/v6/roomassign/summary?targetDate=${prevDate1}`),
+                      fetch(`https://belleforet-data.vercel.app/api/v6/roomassign/summary?targetDate=${prevDate2}`)
                     ]);
                     
                     const [jsonToday, jsonPrev1, jsonPrev2] = await Promise.all([

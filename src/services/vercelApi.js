@@ -1,7 +1,7 @@
 import { db } from "../firebase";
 import { collection, getDocs, writeBatch, doc, query, where } from "firebase/firestore";
 
-const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v3/roomassign/reservations";
+const VERCEL_API_URL = "https://belleforet-data.vercel.app/api/v6/roomassign/ai-parse";
 
 // Safe Firestore batch commit helper
 const commitInBatches = async (dbInstance, operations) => {
