@@ -14,7 +14,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
   reservations.forEach(res => {
     if (res.assignedRoom) {
       // 콤마로 구분된 여러 방 ID (e.g., "101-201, 101-202")를 각각 분리해서 추가
-      const ids = res.assignedRoom.split(',').map(s => s.trim());
+      const ids = String(res.assignedRoom).split(',').map(s => s.trim());
       ids.forEach(id => {
         if (id) alreadyAssignedRoomIds.push(id);
       });
@@ -34,15 +34,17 @@ export async function runAutoAssignment(reservations, currentRooms) {
   // 0-3. 동일인(customerName) 다중 예약 시 자동 그룹화 처리
   const customerCountMap = {};
   reservations.forEach(r => {
-    if (r.customerName) {
-      customerCountMap[r.customerName] = (customerCountMap[r.customerName] || 0) + 1;
+    const cName = (r.customerName || r.customer_name || '').trim();
+    if (cName) {
+      customerCountMap[cName] = (customerCountMap[cName] || 0) + 1;
     }
   });
 
   reservations.forEach(r => {
+    const cName = (r.customerName || r.customer_name || '').trim();
     // 2개 이상 예약한 동일인인데 그룹명이 없는 경우, 고객명을 그룹명으로 자동 지정
-    if (r.customerName && customerCountMap[r.customerName] > 1 && !r.group_name && !r.groupName) {
-      r.groupName = r.customerName; 
+    if (cName && customerCountMap[cName] > 1 && !r.group_name && !r.groupName) {
+      r.groupName = cName; 
     }
   });
   
@@ -62,16 +64,17 @@ export async function runAutoAssignment(reservations, currentRooms) {
   });
 
   for (const res of sortedReservations) {
+    const customerName = (res.customerName || res.customer_name || '').trim();
+    const displayName = customerName || res.reservationId || res.id || '무명 고객';
+
     // 이미 DB(예약)에 방이 할당되어 있거나, 수기 배정 등으로 객실 노트에 고객명이 기입된 경우 보호/건너뜀
-    const isManuallyAssigned = currentRooms.some(r => r.notes && r.notes.includes(res.customerName));
+    // (customerName이 비어있는 경우 includes("")가 무조건 true를 반환하는 버그 방지)
+    const isManuallyAssigned = Boolean(customerName && currentRooms.some(r => r.notes && r.notes.includes(customerName)));
     if (res.assignedRoom || isManuallyAssigned) {
-      logs.push(`[건너뜀] ${res.customerName} 고객님은 이미 배정되었습니다 (${res.assignedRoom || '수기 배정'}).`);
+      logs.push(`[건너뜀] ${displayName} 고객님은 이미 배정되었습니다 (${res.assignedRoom || '수기 배정'}).`);
       continue;
     }
 
-    logs.push(`---`);
-    logs.push(`[진행중] ${res.customerName} 고객님 (${res.roomType}) 분석 시작...`);
-    
     // 1. AI 선호도 분석 결과 (Vercel 엔진에서 받아온 값)
     const prefs = res.preferences || {
       wantsHighFloor: false, wantsLowFloor: false, needsAccessible: false, isConnectingRequired: false, otherKeywords: []
@@ -96,11 +99,39 @@ export async function runAutoAssignment(reservations, currentRooms) {
       }
     }
 
+    // 2. 타입에 맞는 빈 방 필터링 (강제 조건 덮어쓰기 로직 추가)
+    let rawType = prefs.forcedSize || res.roomType || res.room_type || res.type || res.size || '';
+    
+    // 만약 rawType이 비어있다면 메모(notes)에서 평형(16PY, 35평 등) 추출 시도
+    if (!rawType && guestNotes) {
+      const match = guestNotes.match(/(16|35|51)\s*(?:PY|P|평|인|형)/i);
+      if (match) {
+        rawType = match[1] + 'P';
+        logs.push(`  └ 메모에서 객실 타입(${rawType}) 자동 추출 반영`);
+      }
+    }
+
+    let effectiveRoomType = '';
+    if (typeof rawType === 'string') {
+      effectiveRoomType = rawType.replace(/평형|평|py/gi, 'P').trim();
+      if (/^(16|35|51)$/.test(effectiveRoomType)) {
+        effectiveRoomType += 'P';
+      }
+    } else if (rawType) {
+      effectiveRoomType = String(rawType).trim();
+      if (/^(16|35|51)$/.test(effectiveRoomType)) {
+        effectiveRoomType += 'P';
+      }
+    }
+
+    logs.push(`---`);
+    logs.push(`[진행중] ${displayName} 고객님 (${effectiveRoomType || '타입 미지정'}) 분석 시작...`);
     logs.push(`  └ 통합 분석 결과: ${JSON.stringify(prefs)}`);
 
-    // 2. 타입에 맞는 빈 방 필터링 (강제 조건 덮어쓰기 로직 추가)
-    const rawType = prefs.forcedSize || res.roomType;
-    const effectiveRoomType = rawType.replace('평', 'P'); // "16평" -> "16P"로 변환
+    if (!effectiveRoomType) {
+      logs.push(`  ❌ [배정 실패] 객실 타입(평형) 정보가 없어 배정을 건너뜁니다.`);
+      continue;
+    }
     
     let candidateRooms = availableRooms.filter(r => {
       // 강제 평형 적용 시, 원래 51P 예약이 아니어도 51P처럼 동작해야 할 수 있으나
@@ -116,7 +147,7 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
     // 2-1. 관리자 강제 규칙(동, 호수) 필터링 추가
     if (prefs.forcedBuilding) {
-      candidateRooms = candidateRooms.filter(r => r.building === prefs.forcedBuilding || r.roomNumber.startsWith(prefs.forcedBuilding));
+      candidateRooms = candidateRooms.filter(r => r.building === prefs.forcedBuilding || (r.roomNumber && r.roomNumber.startsWith(prefs.forcedBuilding)));
       logs.push(`  └ 관리자 규칙: [${prefs.forcedBuilding}동]으로 필터링`);
     }
     
@@ -175,9 +206,9 @@ export async function runAutoAssignment(reservations, currentRooms) {
       
       // 3순위: 층수 선호도
       if (prefs.wantsHighFloor) {
-        return b.roomNumber.localeCompare(a.roomNumber);
+        return (b.roomNumber || '').localeCompare(a.roomNumber || '');
       } else if (prefs.wantsLowFloor) {
-        return a.roomNumber.localeCompare(b.roomNumber);
+        return (a.roomNumber || '').localeCompare(b.roomNumber || '');
       }
       return 0;
     });
@@ -219,17 +250,21 @@ export async function runAutoAssignment(reservations, currentRooms) {
     if (effectiveRoomType === '51P') {
       // 같은 동(building)에 있는 인접 객실을 정확히 찾아 연동
       const adjacentRoom = availableRooms.find(r => r.roomNumber === selectedRoom.adjacent && r.building === selectedRoom.building);
-        assignments.push({
-          reservationId: res.reservationId,
-          customerName: res.customerName,
-          stayLength: res.stayLength || 1,
-          checkInDate: res.checkInDate || new Date().toISOString(),
-          assignedRooms: [selectedRoom.id, adjacentRoom.id],
-          type: '51P',
-          aiReason: aiReason,
-          tags: tags,
-          group_name: groupName
-        });
+      if (!adjacentRoom) {
+        logs.push(`  ❌ [배정 실패] 51평형 인접 객실을 찾을 수 없습니다.`);
+        continue;
+      }
+      assignments.push({
+        reservationId: res.reservationId || res.id,
+        customerName: customerName || displayName,
+        stayLength: res.stayLength || 1,
+        checkInDate: res.checkInDate || new Date().toISOString(),
+        assignedRooms: [selectedRoom.id, adjacentRoom.id],
+        type: '51P',
+        aiReason: aiReason,
+        tags: tags,
+        group_name: groupName
+      });
         logs.push(`  ✅ [배정 성공] 51평형(락오프): ${selectedRoom.roomNumber}호 + ${adjacentRoom.roomNumber}호 통합 배정 완료 – ${aiReason}`);
       
       // 인벤토리에서 제외
@@ -237,16 +272,16 @@ export async function runAutoAssignment(reservations, currentRooms) {
       availableRooms.splice(availableRooms.findIndex(r => r.id === adjacentRoom.id), 1);
     } else {
       assignments.push({
-      reservationId: res.reservationId,
-      customerName: res.customerName,
-      stayLength: res.stayLength || 1,
-      checkInDate: res.checkInDate || new Date().toISOString(),
-      assignedRooms: [selectedRoom.id],
-      type: effectiveRoomType,
-      aiReason: aiReason,
-      tags: tags,
-      group_name: groupName
-    });
+        reservationId: res.reservationId || res.id,
+        customerName: customerName || displayName,
+        stayLength: res.stayLength || 1,
+        checkInDate: res.checkInDate || new Date().toISOString(),
+        assignedRooms: [selectedRoom.id],
+        type: effectiveRoomType,
+        aiReason: aiReason,
+        tags: tags,
+        group_name: groupName
+      });
       logs.push(`  ✅ [배정 성공] ${selectedRoom.roomNumber}호 배정 완료 – ${aiReason}`);
       
       // 인벤토리에서 제외

@@ -151,7 +151,10 @@ function RoomInventory({ isAdmin, user }) {
       const reservations = await fetchTodayReservations(targetDate, activeRules);
 
       // 이미 모두 배정되었는지 간단히 확인 (빠른 리턴용)
-      const allAssigned = reservations.every(res => res.assignedRoom || rooms.some(r => r.notes && r.notes.includes(res.customerName)));
+      const allAssigned = reservations.every(res => {
+        const cName = (res.customerName || res.customer_name || '').trim();
+        return res.assignedRoom || (cName && rooms.some(r => r.notes && r.notes.includes(cName)));
+      });
       if (allAssigned && reservations.length > 0) {
         if (!silent) alert('모든 예약이 이미 배정되었거나, 처리할 예약이 없습니다.');
         setIsAssigning(false);
@@ -170,7 +173,7 @@ function RoomInventory({ isAdmin, user }) {
             const roomRef = doc(db, 'rooms', roomId);
             ops.push(b => b.update(roomRef, {
               status: 'assigned',
-              notes: "[자동 배정] " + assignment.customerName + " (" + assignment.type + ")",
+              notes: "[자동 배정] " + (assignment.customerName || "고객") + " (" + assignment.type + ")",
               customerName: assignment.customerName || null,
               stayLength: assignment.stayLength || 1,
               checkInDate: assignment.checkInDate || new Date().toISOString(),
@@ -508,7 +511,7 @@ function RoomInventory({ isAdmin, user }) {
             } else if (matchingRoom.customerName) {
               guestText = matchingRoom.customerName;
             } else if (matchingRoom.notes) {
-              guestText = matchingRoom.notes.replace(/\[자동 배정\]/g, '').trim();
+              guestText = (matchingRoom.notes || '').replace(/\[자동 배정\]/g, '').trim();
             }
             
             // 연박 텍스트 추가 (예: (1/2))
@@ -525,7 +528,7 @@ function RoomInventory({ isAdmin, user }) {
             }
             
             // 잔여 (35P) 등 불필요한 텍스트 제거
-            guestText = guestText.replace(/\s*\(\d+[pP]\)/g, '').trim();
+            guestText = (guestText || '').replace(/\s*\(\d+[pP]\)/g, '').trim();
             
             // 값 주입 및 폰트 스타일 (글꼴: 맑은 고딕, 기본 크기: 10)
             targetCell.value = guestText;
@@ -956,7 +959,7 @@ function RoomInventory({ isAdmin, user }) {
                   {room.customerName ? (
                     room.groupName || room.group_name ? `${room.customerName} | ${room.groupName || room.group_name}` : room.customerName
                   ) : (
-                    room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
+                    (room.notes || '').replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
                   )}
                 </div>
               )}
@@ -1026,7 +1029,7 @@ function RoomInventory({ isAdmin, user }) {
                     {room.customerName ? (
                       room.groupName || room.group_name ? `${room.customerName} | ${room.groupName || room.group_name}` : room.customerName
                     ) : (
-                      room.notes.replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
+                      (room.notes || '').replace(/\[자동 배정\]\s*/g, '').replace(/\s*\(\d+[pP]\)$/g, '').trim()
                     )}
                   </div>
                 )}
