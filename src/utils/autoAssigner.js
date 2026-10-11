@@ -48,8 +48,16 @@ export async function runAutoAssignment(reservations, currentRooms) {
     }
   });
   
-  // 0. 전체 우선순위 정렬: VIP(isVip/is_vip) > 방문횟수(visitCount/visit_count) > 회원(is_member) > 골프(teeOffTime/tee_off_time/has_golf)
+  // 0. 전체 우선순위 정렬: 51P(락오프 페어 보호) > VIP > 방문횟수 > 회원 > 골프
   const sortedReservations = [...reservations].sort((a, b) => {
+    // 51평(락오프) 예약은 2개 방(35P+16P)을 쌍으로 점유해야 하므로 페어 찢어짐(조각화) 방지를 위해 최우선 처리
+    const aType = (a.preferences?.forcedSize || a.roomType || a.room_type || a.type || a.size || '') + ' ' + (a.notes || '');
+    const bType = (b.preferences?.forcedSize || b.roomType || b.room_type || b.type || b.size || '') + ' ' + (b.notes || '');
+    const aIs51P = /(?:^|\b|\s)51\s*(?:PY|P|평|형)/i.test(aType);
+    const bIs51P = /(?:^|\b|\s)51\s*(?:PY|P|평|형)/i.test(bType);
+    if (aIs51P && !bIs51P) return -1;
+    if (!aIs51P && bIs51P) return 1;
+
     const aVip = a.isVip ?? a.is_vip;
     const aVisit = (a.visitCount ?? a.visit_count) || 0;
     const aTeeOff = a.teeOffTime ?? a.tee_off_time ?? a.hasGolf ?? a.has_golf;
@@ -88,6 +96,11 @@ export async function runAutoAssignment(reservations, currentRooms) {
     if (guestNotes.includes('고층') || guestNotes.includes('높은층') || guestNotes.includes('높은 층')) prefs.wantsHighFloor = true;
     if (guestNotes.includes('저층') || guestNotes.includes('낮은층') || guestNotes.includes('낮은 층') || guestNotes.includes('1층')) prefs.wantsLowFloor = true;
     if (guestNotes.includes('장애인') || guestNotes.includes('휠체어')) prefs.needsAccessible = true;
+    // 이동약자(장애인/휠체어) 안전 절대 우선: 고층 선호와 충돌 시 저층/엘리베이터 직결 객실로 강제
+    if (prefs.needsAccessible) {
+      prefs.wantsHighFloor = false;
+      prefs.wantsLowFloor = true;
+    }
 
     // 단체(그룹) 일괄 배정 로직: 같은 그룹은 가급적 같은 동에 배정
     const groupName = res.groupName || res.group_name;
@@ -145,16 +158,28 @@ export async function runAutoAssignment(reservations, currentRooms) {
       return r.size === effectiveRoomType;
     });
 
-    // 2-1. 관리자 강제 규칙(동, 호수) 필터링 추가
+    // 2-1. 관리자 강제 규칙(동, 호수) 필터링 (교착 상태 방지 Graceful Fallthrough 지원)
+    let filteredCandidates = candidateRooms;
     if (prefs.forcedBuilding) {
-      candidateRooms = candidateRooms.filter(r => r.building === prefs.forcedBuilding || (r.roomNumber && r.roomNumber.startsWith(prefs.forcedBuilding)));
-      logs.push(`  └ 관리자 규칙: [${prefs.forcedBuilding}동]으로 필터링`);
+      const bRooms = filteredCandidates.filter(r => r.building === prefs.forcedBuilding || (r.roomNumber && r.roomNumber.startsWith(prefs.forcedBuilding)));
+      if (bRooms.length > 0) {
+        filteredCandidates = bRooms;
+        logs.push(`  └ 관리자 규칙: [${prefs.forcedBuilding}동]으로 필터링`);
+      } else {
+        logs.push(`  ⚠️ [규칙 완화] [${prefs.forcedBuilding}동] 잔여 객실 부족으로 전체 동에서 탐색합니다.`);
+      }
     }
     
     if (prefs.forcedRoom) {
-      candidateRooms = candidateRooms.filter(r => r.roomNumber === prefs.forcedRoom);
-      logs.push(`  └ 관리자 규칙: [${prefs.forcedRoom}호]로 지정`);
+      const rRooms = filteredCandidates.filter(r => r.roomNumber === prefs.forcedRoom);
+      if (rRooms.length > 0) {
+        filteredCandidates = rRooms;
+        logs.push(`  └ 관리자 규칙: [${prefs.forcedRoom}호]로 지정`);
+      } else {
+        logs.push(`  ⚠️ [규칙 완화] 지정된 [${prefs.forcedRoom}호]가 사용 불가하여 동일 조건 대체 호실로 자동 전환합니다.`);
+      }
     }
+    candidateRooms = filteredCandidates;
 
     if (candidateRooms.length === 0) {
       logs.push(`  ❌ [배정 실패] 조건에 맞는 ${effectiveRoomType} 빈 방이 없습니다.`);
@@ -191,12 +216,17 @@ export async function runAutoAssignment(reservations, currentRooms) {
 
     // 4. 선호도에 따른 정렬/선택
     candidateRooms.sort((a, b) => {
-      // 1순위: 장애인 객실 우선 배정 (조건 충족 시)
+      // 1순위: 장애인/이동약자 전용 객실 보호 정책
+      const aHandicap = a.isDisabled ?? a.is_handicap_accessible;
+      const bHandicap = b.isDisabled ?? b.is_handicap_accessible;
       if (prefs.needsAccessible) {
-        const aHandicap = a.isDisabled ?? a.is_handicap_accessible;
-        const bHandicap = b.isDisabled ?? b.is_handicap_accessible;
+        // 장애인/휠체어 고객: 전용 객실을 최우선 배정
         if (aHandicap && !bHandicap) return -1;
         if (!aHandicap && bHandicap) return 1;
+      } else {
+        // 비장애인 일반 고객: 장애인 전용 객실을 가급적 보호(최후순위로 미룸)
+        if (aHandicap && !bHandicap) return 1;
+        if (!aHandicap && bHandicap) return -1;
       }
 
       // 2순위: 특징 매칭 점수
