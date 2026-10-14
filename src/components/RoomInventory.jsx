@@ -129,9 +129,12 @@ function RoomInventory({ isAdmin, user }) {
     try {
       const q = query(collection(db, 'ai_rules'), where('isActive', '==', true));
       const snap = await getDocs(q);
-      setActiveRules(snap.docs.map(doc => doc.data().text));
+      const latestRules = snap.docs.map(doc => doc.data().text);
+      setActiveRules(latestRules);
+      return latestRules;
     } catch (e) {
       console.error(e);
+      return activeRules;
     }
   };
 
@@ -145,10 +148,10 @@ function RoomInventory({ isAdmin, user }) {
 
   const handleAutoAssign = async (silent = false) => {
     setIsAssigning(true);
-    await fetchActiveRules();
+    const currentActiveRules = await fetchActiveRules();
     try {
-      // 1. Fetch Reservations from Vercel Engine
-      const reservations = await fetchTodayReservations(targetDate, activeRules);
+      // 1. Fetch Reservations from Vercel Engine (최신 규칙 배열 즉시 전달)
+      const reservations = await fetchTodayReservations(targetDate, currentActiveRules);
 
       // 이미 모두 배정되었는지 간단히 확인 (빠른 리턴용)
       const allAssigned = reservations.every(res => {
@@ -175,6 +178,7 @@ function RoomInventory({ isAdmin, user }) {
               status: 'assigned',
               notes: "[자동 배정] " + (assignment.customerName || "고객") + " (" + assignment.type + ")",
               customerName: assignment.customerName || null,
+              reservationId: assignment.reservationId ? String(assignment.reservationId) : null,
               stayLength: assignment.stayLength || 1,
               checkInDate: assignment.checkInDate || new Date().toISOString(),
               aiReason: assignment.aiReason || '',
@@ -236,8 +240,17 @@ function RoomInventory({ isAdmin, user }) {
         }
       });
 
+      // 일회성 특별 규칙(isOneTime: true) 자동 비활성화 처리
+      const rulesSnapshot = await getDocs(query(collection(db, 'ai_rules'), where('isActive', '==', true)));
+      rulesSnapshot.docs.forEach(ruleDoc => {
+        if (ruleDoc.data().isOneTime) {
+          batch.update(ruleDoc.ref, { isActive: false });
+        }
+      });
+
       await batch.commit();
-      alert('객실 및 예약 배정 내역이 모두 초기화되었습니다.');
+      await fetchActiveRules();
+      alert('객실 및 예약 배정 내역이 모두 초기화되었습니다. (일회성 특별 규칙 자동 종료 포함)');
     } catch (error) {
       console.error('Error initializing rooms:', error);
       alert('초기화 중 오류가 발생했습니다: ' + error.message);
@@ -278,8 +291,8 @@ function RoomInventory({ isAdmin, user }) {
       finalNotes = '청소 미흡 (준비 중)';
       setNotesInput(finalNotes);
     } else if (status === 'available') {
-      finalNotes = '';
-      setNotesInput('');
+      finalNotes = (selectedRoom.size === '51P' && !selectedRoom.isConnecting) ? '장애인 객실' : '';
+      setNotesInput(finalNotes);
       doKickUser = true; // 빈 방으로 돌리면 무조건 기존 예약자의 방을 빼야 함
     } else {
       finalNotes = notesInput || selectedRoom.notes;
